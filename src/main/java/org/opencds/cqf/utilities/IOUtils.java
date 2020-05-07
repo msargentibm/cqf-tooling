@@ -662,4 +662,15 @@ public class IOUtils
                 .forEach(entry -> activityDefinitionPaths.add(entry.getKey()));
         }
     }
+
+    public static void ensurePath(String path) throws IOException {
+        //Creating a File object
+        java.io.File scopeDir = new java.io.File(path);
+        //Creating the directory
+        if (!scopeDir.exists()) {
+            if (!scopeDir.mkdirs()) {
+                throw new IOException("Could not create directory: " + path);
+            }
+        }
+    }
 }

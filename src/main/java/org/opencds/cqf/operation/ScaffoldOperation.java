@@ -21,6 +21,7 @@ public class ScaffoldOperation extends Operation {
             System.err.println(e.getMessage());
             System.exit(1);
         }
-        ScaffoldProcessor.scaffold(params);
+
+        new ScaffoldProcessor().scaffold(params);
     }
 }

@@ -68,7 +68,7 @@ public class R4LibraryProcessor implements LibraryProcessor{
     private static void refreshLibrary(String igCanonicalBase, Library referenceLibrary, String cqlContentPath, String outputPath, Encoding encoding, Boolean includeVersion, CqlTranslator translator, FhirContext fhirContext) {
         Library generatedLibrary = processLibrary(igCanonicalBase, cqlContentPath, translator, includeVersion, fhirContext);
         mergeDiff(referenceLibrary, generatedLibrary, cqlContentPath, translator, fhirContext);
-        cqfmHelper.ensureToolingExtensionAndDevice(referenceLibrary);
+        cqfmHelper.ensureCQFToolingExtensionAndDevice(referenceLibrary);
         IOUtils.writeResource(referenceLibrary, outputPath, encoding, fhirContext);
     }
 
@@ -107,7 +107,7 @@ public class R4LibraryProcessor implements LibraryProcessor{
 
         resolveDataRequirements(library, translator);
         attachContent(library, translator, IOUtils.getCqlString(cqlContentPath));
-        cqfmHelper.ensureToolingExtensionAndDevice(library);
+        cqfmHelper.ensureCQFToolingExtensionAndDevice(library);
         BaseNarrativeProvider<Narrative> narrativeProvider = new org.opencds.cqf.library.r4.NarrativeProvider();
         INarrative narrative = narrativeProvider.getNarrative(fhirContext, library);
         library.setText((Narrative) narrative);

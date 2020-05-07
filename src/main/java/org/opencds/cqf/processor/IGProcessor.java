@@ -98,7 +98,7 @@ public class IGProcessor {
         }     
     }
     
-    public static IGVersion getIgVersion(String igPath){
+    public static IGVersion getIgVersion(String igPath) {
         IGVersion igVersion = null;
         List<File> igPathFiles = IOUtils.getFilePaths(igPath, false).stream()
             .map(path -> new File(path))

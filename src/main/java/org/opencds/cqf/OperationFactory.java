@@ -8,6 +8,7 @@ import org.opencds.cqf.measure.r4.RefreshR4Measure;
 import org.opencds.cqf.measure.stu3.RefreshStu3Measure;
 import org.opencds.cqf.modelinfo.StructureDefinitionToModelInfo;
 import org.opencds.cqf.operation.*;
+import org.opencds.cqf.processor.ScaffoldProcessor;
 import org.opencds.cqf.qdm.QdmToQiCore;
 import org.opencds.cqf.quick.QuickPageGenerator;
 import org.opencds.cqf.terminology.*;
@@ -54,6 +55,8 @@ class OperationFactory {
                 return new RefreshStu3Measure();
             case "RefreshR4Measure":
                 return new RefreshR4Measure();
+            case "ScaffoldIG":
+                return new ScaffoldOperation();
             case "CqlToMeasure":
                 throw new NotImplementedException("CqlToMeasure");
             case "BundlesToBundle":

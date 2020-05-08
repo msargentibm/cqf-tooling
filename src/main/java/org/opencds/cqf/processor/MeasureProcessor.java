@@ -9,12 +9,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
+import org.hl7.fhir.dstu3.model.DomainResource;
 import org.hl7.fhir.instance.model.api.IAnyResource;
+import org.opencds.cqf.common.BaseCqfmSoftwareSystemHelper;
+import org.opencds.cqf.common.CqfmSoftwareSystem;
 import org.opencds.cqf.measure.RefreshGeneratedContent;
 import org.opencds.cqf.measure.r4.RefreshR4Measure;
 import org.opencds.cqf.measure.stu3.RefreshStu3Measure;
 import org.opencds.cqf.utilities.*;
-import org.opencds.cqf.utilities.IOUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -60,8 +62,8 @@ public class MeasureProcessor
     }
 
     public static void bundleMeasures(ArrayList<String> refreshedLibraryNames, String igPath, Boolean includeDependencies,
-            Boolean includeTerminology, Boolean includePatientScenarios, Boolean includeVersion, FhirContext fhirContext, String fhirUri,
-            Encoding encoding) {
+                                      Boolean includeTerminology, Boolean includePatientScenarios, Boolean includeVersion, FhirContext fhirContext, String fhirUri,
+                                      Encoding encoding, List<CqfmSoftwareSystem> softwareSystemStamps) {
         // The set to bundle should be the union of the successfully refreshed Measures
         // and Libraries
         // Until we have the ability to refresh Measures, the set is the union of
@@ -125,10 +127,34 @@ public class MeasureProcessor
                             & TestCaseProcessor.bundleTestCases(igPath, refreshedLibraryName, fhirContext, resources);
                 }
 
+                /* Add cqfmSoftwareSystem extension for cqf-tooling to each Measure and Library */
+                BaseCqfmSoftwareSystemHelper cqfmHelper;
+                for (IAnyResource resource : resources.values()) {
+                    if (resource.fhirType().equals("Library") || resource.fhirType().equals("Measure")) {
+                        switch (fhirContext.getVersion().getVersion()) {
+                            case DSTU3:
+                                new org.opencds.cqf.common.stu3.CqfmSoftwareSystemHelper().ensureCQFToolingExtensionAndDevice((org.hl7.fhir.dstu3.model.DomainResource)resource);
+                                if (softwareSystemStamps != null && !softwareSystemStamps.isEmpty()) {
+                                    new org.opencds.cqf.common.stu3.CqfmSoftwareSystemHelper().ensureSoftwareSystemExtensionAndDevice((org.hl7.fhir.dstu3.model.DomainResource)resource, softwareSystemStamps);
+                                }
+                                break;
+                            case R4:
+                                new org.opencds.cqf.common.r4.CqfmSoftwareSystemHelper().ensureCQFToolingExtensionAndDevice((org.hl7.fhir.r4.model.DomainResource)resource);
+                                if (softwareSystemStamps != null && !softwareSystemStamps.isEmpty()) {
+                                    new org.opencds.cqf.common.r4.CqfmSoftwareSystemHelper().ensureSoftwareSystemExtensionAndDevice((org.hl7.fhir.r4.model.DomainResource)resource, softwareSystemStamps);
+                                }
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Unknown fhir version: " + fhirContext.getVersion().getVersion().getFhirVersionString());
+                        }
+                    }
+                }
+
                 if (shouldPersist) {
                     String bundleDestPath = FilenameUtils.concat(IGProcessor.getBundlesPath(igPath), refreshedLibraryName);
                     persistBundle(igPath, bundleDestPath, refreshedLibraryName, encoding, fhirContext, new ArrayList<IAnyResource>(resources.values()), fhirUri);
-                    bundleFiles(igPath, bundleDestPath, refreshedLibraryName, measureSourcePath, librarySourcePath, fhirContext, encoding, includeTerminology, includeDependencies, includePatientScenarios, includeVersion);
+                    bundleFiles(igPath, bundleDestPath, refreshedLibraryName, measureSourcePath, librarySourcePath,
+                            fhirContext, encoding, includeTerminology, includeDependencies, includePatientScenarios, includeVersion);
                     bundledMeasures.add(refreshedLibraryName);
                 }
             } catch (Exception e) {

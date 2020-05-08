@@ -7,7 +7,7 @@ import org.opencds.cqf.common.CqfmSoftwareSystem;
 import org.opencds.cqf.parameter.ScaffoldParameters;
 import org.opencds.cqf.utilities.LogUtils;
 import org.opencds.cqf.utilities.ResourceUtils;
-import org.opencds.cqf.utilities.IOUtils;
+import org.opencds.cqf.utilities.*;
 
 import java.io.IOException;
 import java.util.List;

@@ -13,8 +13,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 import org.opencds.cqf.parameter.RefreshIGParameters;
-import org.opencds.cqf.utilities.IOUtils;
-import org.opencds.cqf.utilities.IOUtils.Encoding;
+import org.opencds.cqf.utilities.*;
 
 import ca.uhn.fhir.context.FhirContext;
 
@@ -48,7 +47,7 @@ public class IGProcessor {
     public static void publishIG(RefreshIGParameters params) {
         String igPath = params.igPath;
         IGVersion igVersion = params.igVersion;
-        Encoding encoding = params.outputEncoding;
+        IOUtils.Encoding encoding = params.outputEncoding;
         Boolean includeELM = params.includeELM;
         Boolean includeDependencies = params.includeDependencies;
         Boolean includeTerminology = params.includeTerminology;
@@ -78,13 +77,16 @@ public class IGProcessor {
 
         //Use case 3
         //package everything
-        IGBundleProcessor.bundleIg(IGRefreshProcessor.refreshedResourcesNames, igPath, encoding, includeELM, includeDependencies, includeTerminology, includePatientScenarios,
-        versioned, fhirContext, fhirUri);
+        IGBundleProcessor.bundleIg(IGRefreshProcessor.refreshedResourcesNames, igPath, encoding, includeELM, includeDependencies,
+                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri);
         //test everything
         //IGTestProcessor.testIg(IGTestParameters);
         //Publish?
     }
 
+    public static void packageIG(RefreshIGParameters params) {
+
+    }
     
     public static FhirContext getIgFhirContext(IGVersion igVersion)
     {

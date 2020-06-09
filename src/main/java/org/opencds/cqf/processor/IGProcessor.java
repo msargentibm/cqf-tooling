@@ -12,7 +12,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
+import org.opencds.cqf.common.CqfmSoftwareSystem;
+import org.opencds.cqf.parameter.PackageIGParameters;
 import org.opencds.cqf.parameter.RefreshIGParameters;
+import org.opencds.cqf.parameter.RefreshLibraryParameters;
 import org.opencds.cqf.utilities.*;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -78,14 +81,54 @@ public class IGProcessor {
         //Use case 3
         //package everything
         IGBundleProcessor.bundleIg(IGRefreshProcessor.refreshedResourcesNames, igPath, encoding, includeELM, includeDependencies,
-                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri);
+                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri, null);
         //test everything
         //IGTestProcessor.testIg(IGTestParameters);
         //Publish?
     }
 
-    public static void packageIG(RefreshIGParameters params) {
+    public static void packageIG(PackageIGParameters params) {
+        String igPath = params.igPath;
+        igPath = Paths.get(igPath).toAbsolutePath().toString();
 
+        List<CqfmSoftwareSystem> softwareSystems = params.softwareSystems;
+
+        IGVersion igVersion = params.igVersion;
+        IOUtils.Encoding encoding = params.outputEncoding;
+        Boolean includeELM = params.includeELM;
+        Boolean includeDependencies = params.includeDependencies;
+        Boolean includeTerminology = params.includeTerminology;
+        Boolean includePatientScenarios = params.includePatientScenarios;
+        Boolean versioned = params.versioned;
+        String fhirUri = params.fhirUri;
+
+        ArrayList<String> resourceDirs = params.resourceDirs;
+        IOUtils.resourceDirectories.addAll(resourceDirs);
+
+        FhirContext fhirContext = IGProcessor.getIgFhirContext(igVersion);
+
+        ArrayList<String> artifactNamesToPackage = new ArrayList<String>();
+        HashSet<String> cqlContentPaths = IOUtils.getCqlLibraryPaths();
+        for (String cqlPath : cqlContentPaths) {
+            try {
+                //ask about how to do this better
+                String libraryPath;
+                libraryPath = IOUtils.getLibraryPathAssociatedWithCqlFileName(cqlPath, fhirContext);
+                if (libraryPath != null && !libraryPath.isBlank() && !libraryPath.isEmpty()) {
+                    artifactNamesToPackage.add(FilenameUtils.getBaseName(cqlPath));
+                }
+                else {
+                    LogUtils.warn(cqlPath);
+                }
+            } catch (Exception e) {
+                LogUtils.putException(cqlPath, e);
+            }
+        }
+        HashSet<String> measurePaths = IOUtils.getMeasurePaths(fhirContext);
+        artifactNamesToPackage.addAll(measurePaths);
+
+        IGBundleProcessor.bundleIg(artifactNamesToPackage, igPath, encoding, includeELM, includeDependencies,
+                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri, softwareSystems);
     }
     
     public static FhirContext getIgFhirContext(IGVersion igVersion)

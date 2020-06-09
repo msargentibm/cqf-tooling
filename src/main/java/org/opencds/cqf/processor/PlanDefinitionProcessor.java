@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 import org.hl7.fhir.instance.model.api.IAnyResource;
+import org.opencds.cqf.common.BaseCqfmSoftwareSystemHelper;
+import org.opencds.cqf.common.CqfmSoftwareSystem;
 import org.opencds.cqf.utilities.BundleUtils;
 import org.opencds.cqf.utilities.HttpClientUtils;
 import org.opencds.cqf.utilities.IOUtils;
@@ -24,7 +26,7 @@ public class PlanDefinitionProcessor {
 
     public static void bundlePlanDefinitions(ArrayList<String> refreshedLibraryNames, String igPath, Boolean includeDependencies,
             Boolean includeTerminology, Boolean includePatientScenarios, Boolean includeVersion, FhirContext fhirContext, String fhirUri,
-            Encoding encoding) {
+            Encoding encoding, List<CqfmSoftwareSystem> softwareSystemStamps) {
         
         HashSet<String> planDefinitionSourcePaths = IOUtils.getPlanDefinitionPaths(fhirContext);
 
@@ -86,6 +88,29 @@ public class PlanDefinitionProcessor {
                 if (includePatientScenarios) {
                     shouldPersist = shouldPersist
                         & TestCaseProcessor.bundleTestCases(igPath, refreshedLibraryName, fhirContext, resources);
+                }
+
+                /* Add cqfmSoftwareSystem extension for cqf-tooling to each Library */
+                BaseCqfmSoftwareSystemHelper cqfmHelper;
+                for (IAnyResource resource : resources.values()) {
+                    if (resource.fhirType().equals("Library")) {
+                        switch (fhirContext.getVersion().getVersion()) {
+                            case DSTU3:
+                                new org.opencds.cqf.common.stu3.CqfmSoftwareSystemHelper().ensureCQFToolingExtensionAndDevice((org.hl7.fhir.dstu3.model.DomainResource)resource);
+                                if (softwareSystemStamps != null && !softwareSystemStamps.isEmpty()) {
+                                    new org.opencds.cqf.common.stu3.CqfmSoftwareSystemHelper().ensureSoftwareSystemExtensionAndDevice((org.hl7.fhir.dstu3.model.DomainResource)resource, softwareSystemStamps);
+                                }
+                                break;
+                            case R4:
+                                new org.opencds.cqf.common.r4.CqfmSoftwareSystemHelper().ensureCQFToolingExtensionAndDevice((org.hl7.fhir.r4.model.DomainResource)resource);
+                                if (softwareSystemStamps != null && !softwareSystemStamps.isEmpty()) {
+                                    new org.opencds.cqf.common.r4.CqfmSoftwareSystemHelper().ensureSoftwareSystemExtensionAndDevice((org.hl7.fhir.r4.model.DomainResource)resource, softwareSystemStamps);
+                                }
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Unknown fhir version: " + fhirContext.getVersion().getVersion().getFhirVersionString());
+                        }
+                    }
                 }
 
                 List<String> activityDefinitionPaths =  CDSHooksProcessor.bundleActivityDefinitions(planDefinitionSourcePath, fhirContext, resources, encoding, includeVersion, shouldPersist);

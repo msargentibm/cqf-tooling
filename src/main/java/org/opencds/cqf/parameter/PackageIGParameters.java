@@ -1,18 +1,16 @@
 package org.opencds.cqf.parameter;
 
+import org.opencds.cqf.common.CqfmSoftwareSystem;
+import org.opencds.cqf.processor.IGProcessor;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
-import org.opencds.cqf.utilities.IOUtils.Encoding;
-
-public class RefreshIGParameters {
+public class PackageIGParameters {
     public String igResourcePath;
     public String igPath;
-    public IGVersion igVersion;
-    public Encoding outputEncoding;
+    public IGProcessor.IGVersion igVersion;
+    public org.opencds.cqf.utilities.IOUtils.Encoding outputEncoding;
     public Boolean includeELM;
     public Boolean includeDependencies;
     public Boolean includeTerminology;
@@ -20,4 +18,6 @@ public class RefreshIGParameters {
     public Boolean versioned;
     public String fhirUri;
     public ArrayList<String> resourceDirs;
+    public Boolean conformant;
+    public List<CqfmSoftwareSystem> softwareSystems;
 }

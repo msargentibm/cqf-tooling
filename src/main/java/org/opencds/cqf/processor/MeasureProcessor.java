@@ -127,10 +127,10 @@ public class MeasureProcessor
                             & TestCaseProcessor.bundleTestCases(igPath, refreshedLibraryName, fhirContext, resources);
                 }
 
-                /* Add cqfmSoftwareSystem extension for cqf-tooling to each Measure and Library */
+                /* Add cqfmSoftwareSystem extension for cqf-tooling to each Measure */
                 BaseCqfmSoftwareSystemHelper cqfmHelper;
                 for (IAnyResource resource : resources.values()) {
-                    if (resource.fhirType().equals("Library") || resource.fhirType().equals("Measure")) {
+                    if (resource.fhirType().equals("Measure")) {
                         switch (fhirContext.getVersion().getVersion()) {
                             case DSTU3:
                                 new org.opencds.cqf.common.stu3.CqfmSoftwareSystemHelper().ensureCQFToolingExtensionAndDevice((org.hl7.fhir.dstu3.model.DomainResource)resource);

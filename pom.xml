@@ -18,6 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <cqfrulertest.version>1.0.1-SNAPSHOT</cqfrulertest.version>
         <cqframework.version>1.4.9-SNAPSHOT</cqframework.version>
         <hapi.version>4.2.0</hapi.version>
     </properties>
@@ -245,6 +246,22 @@
                 <exclusion>
                     <groupId>jaxb</groupId>
                     <artifactId>jaxb-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.opencds.cqf</groupId>
+            <artifactId>cqf-ruler-test</artifactId>
+            <version>${cqfrulertest.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>jaxb</groupId>
+                    <artifactId>jaxb-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jvnet.jaxb2_commons</groupId>
+                    <artifactId>jaxb2-basics</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

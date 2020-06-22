@@ -58,6 +58,8 @@ class OperationFactory {
                 return new RefreshR4Measure();
             case "ScaffoldIG":
                 return new ScaffoldOperation();
+            case "TestIG":
+                return new TestIGOperation();
             case "CqlToMeasure":
                 throw new NotImplementedException("CqlToMeasure");
             case "BundlesToBundle":

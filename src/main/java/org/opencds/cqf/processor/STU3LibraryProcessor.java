@@ -139,10 +139,13 @@ public class STU3LibraryProcessor implements LibraryProcessor{
         }
 
         //TODO: adding the resource prefix here is a temporary workaround until the rest of the tooling can get rid of it.
+        //HACK: This FHIRHelpers-specific code is a total HACK to simplify refresh for the connectathon. Should be removed and never committed.
+        String prefix = def.getPath().contains("FHIRHelpers") ? "" : LibraryProcessor.ResourcePrefix;
+
         library.addRelatedArtifact(
             new RelatedArtifact()
                 .setType(RelatedArtifact.RelatedArtifactType.DEPENDSON)
-                .setResource(new Reference().setReference(igCanonicalBase + "Library/" + getResourceCanonicalReference(def, includeVersion))) //this is the reference name
+                .setResource(new Reference().setReference(igCanonicalBase + "Library/" + prefix + getResourceCanonicalReference(def, includeVersion))) //this is the reference name
         );
     }
 

@@ -19,6 +19,7 @@ import org.opencds.cqf.parameter.RefreshLibraryParameters;
 import org.opencds.cqf.utilities.*;
 
 import ca.uhn.fhir.context.FhirContext;
+import org.opencds.cqf.utilities.LogUtils;
 
 public class IGProcessor {
     public enum IGVersion {
@@ -49,6 +50,7 @@ public class IGProcessor {
     //mega ig method
     public static void publishIG(RefreshIGParameters params) {
         String igPath = params.igPath;
+        String igResourcePath = params.igResourcePath;
         IGVersion igVersion = params.igVersion;
         IOUtils.Encoding encoding = params.outputEncoding;
         Boolean includeELM = params.includeELM;
@@ -56,7 +58,9 @@ public class IGProcessor {
         Boolean includeTerminology = params.includeTerminology;
         Boolean includePatientScenarios = params.includePatientScenarios;
         Boolean versioned = params.versioned;
+        Boolean cdsHooksIg = params.cdsHooksIg;
         String fhirUri = params.fhirUri;
+        String measureToRefreshPath = params.measureToRefreshPath;
         ArrayList<String> resourceDirs = params.resourceDirs;
 
         IOUtils.resourceDirectories.addAll(resourceDirs);
@@ -72,6 +76,7 @@ public class IGProcessor {
 
         //Use case 2 while developing in Atom refresh content and run tests for either entire IG or targeted Artifact
         //refreshcontent
+        LogUtils.info("IGProcessor.publishIG - refreshIG");
         IGRefreshProcessor.refreshIG(params);
         //validate
         //ValidateProcessor.validate(ValidateParameters);
@@ -80,8 +85,9 @@ public class IGProcessor {
 
         //Use case 3
         //package everything
-        IGBundleProcessor.bundleIg(IGRefreshProcessor.refreshedResourcesNames, igPath, encoding, includeELM, includeDependencies,
-                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri, null);
+        LogUtils.info("IGProcessor.publishIG - bundleIg");
+        IGBundleProcessor.bundleIg(IGRefreshProcessor.refreshedResourcesNames, igPath, encoding, includeELM, includeDependencies, includeTerminology, includePatientScenarios,
+        versioned, cdsHooksIg, fhirContext, fhirUri, null);
         //test everything
         //IGTestProcessor.testIg(IGTestParameters);
         //Publish?

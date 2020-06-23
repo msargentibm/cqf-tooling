@@ -6,7 +6,7 @@ public class IGUtils {
     public static String getImplementationGuideCanonicalBase(String url) {
         String canonicalBase = null;
 
-        if (url != null && !url.isEmpty() && !url.isBlank()) {
+        if (url != null && !url.isEmpty()) {
             canonicalBase = url.substring(0, url.indexOf("/ImplementationGuide/"));
         }
 

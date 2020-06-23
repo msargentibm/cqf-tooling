@@ -7,6 +7,7 @@ import org.opencds.cqf.TestIGParameters;
 import org.opencds.cqf.TestIGProcessor;
 import org.opencds.cqf.parameter.RefreshIGParameters;
 import org.opencds.cqf.utilities.IGUtils;
+import org.opencds.cqf.utilities.IOUtils;
 import org.opencds.cqf.utilities.LogUtils;
 import org.opencds.cqf.utilities.ResourceUtils;
 

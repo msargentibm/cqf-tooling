@@ -43,7 +43,7 @@ public class IGRefreshProcessor {
         IOUtils.resourceDirectories.addAll(resourceDirs);
 
         FhirContext fhirContext = IGProcessor.getIgFhirContext(igVersion);
-        Boolean igResourcePathIsSpecified = igResourcePath != null && !igResourcePath.isEmpty() && !igResourcePath.isBlank();
+        Boolean igResourcePathIsSpecified = igResourcePath != null && !igResourcePath.isEmpty();
         IAnyResource implementationGuide = null;
         String igCanonicalBase = null;
 
@@ -68,7 +68,7 @@ public class IGRefreshProcessor {
             Object urlProperty = ResourceUtils.resolveProperty(implementationGuide, "url", fhirContext);
             String urlValue = ResourceUtils.resolveProperty(urlProperty, "value", fhirContext).toString();
 
-            if (urlValue != null && !urlValue.isEmpty() && !urlValue.isBlank()) {
+            if (urlValue != null && !urlValue.isEmpty()) {
                 igCanonicalBase = IGUtils.getImplementationGuideCanonicalBase(urlValue);
 
             }

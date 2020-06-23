@@ -972,7 +972,7 @@ public class Processor extends Operation {
     private StructureDefinition createProfileStructureDefinition(DictionaryElement element, String customProfileId) {
         DictionaryFhirElementPath elementPath = element.getFhirElementPath();
         String customProfileIdRaw = elementPath.getCustomProfileId();
-        Boolean hasCustomProfileIdRaw = customProfileIdRaw != null && !customProfileIdRaw.isEmpty() && !customProfileIdRaw.isBlank();
+        Boolean hasCustomProfileIdRaw = customProfileIdRaw != null && !customProfileIdRaw.isEmpty();
         String resourceType = elementPath.getResourceType().trim();
 
         StructureDefinition sd;
@@ -1032,7 +1032,7 @@ public class Processor extends Operation {
 
         // If custom profile is specified, search for if it exists already.
         String customProfileIdRaw = element.getFhirElementPath().getCustomProfileId();
-        Boolean hasCustomProfileIdRaw = customProfileIdRaw != null && !customProfileIdRaw.isBlank() && !customProfileIdRaw.isEmpty();
+        Boolean hasCustomProfileIdRaw = customProfileIdRaw != null && !customProfileIdRaw.isEmpty();
         String customProfileId = toId(hasCustomProfileIdRaw ? customProfileIdRaw : element.getName());
         for (StructureDefinition existingSD : profiles) {
             if (existingSD.getId().equals(customProfileId)) {
@@ -1204,7 +1204,7 @@ public class Processor extends Operation {
                 ed.setMustSupport(true);
 
                 String unitOfMeasure = element.getFhirElementPath().getUnitOfMeasure();
-                Boolean hasUnitOfMeasure = unitOfMeasure != null && !unitOfMeasure.isBlank() && !unitOfMeasure.isEmpty();
+                Boolean hasUnitOfMeasure = unitOfMeasure != null && !unitOfMeasure.isEmpty();
                 if (isChoiceType(elementPath) && hasUnitOfMeasure) {
                     ElementDefinition unitElement = new ElementDefinition();
                     unitElement.setId(elementId + ".unit");
@@ -1355,7 +1355,7 @@ public class Processor extends Operation {
     private void ensureAndBindElementTerminology(DictionaryElement element, StructureDefinition sd, ElementDefinition ed) {
         // binding and CodeSystem/ValueSet for MultipleChoice elements
         String customValueSetName = element.getFhirElementPath().getCustomValueSetName();
-        Boolean hasCustomValueSetName = customValueSetName != null && !customValueSetName.isBlank() && !customValueSetName.isEmpty();
+        Boolean hasCustomValueSetName = customValueSetName != null && !customValueSetName.isEmpty();
 
         //TODO: hasCustomValueSetName might be sufficient here?
         if (element.getChoices().size() > 0 || hasCustomValueSetName) {
@@ -1409,7 +1409,7 @@ public class Processor extends Operation {
     private ValueSet ensureValueSet(DictionaryElement element) {
         // Ensure the ValueSet
         String valueSetName = element.getFhirElementPath().getCustomValueSetName();
-        if (valueSetName == null || valueSetName.isEmpty() || valueSetName.isBlank()) {
+        if (valueSetName == null || valueSetName.isEmpty()) {
             valueSetName = toId(element.getName());
         }
 

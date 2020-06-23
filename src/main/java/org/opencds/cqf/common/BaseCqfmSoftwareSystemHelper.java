@@ -15,14 +15,14 @@ public abstract class BaseCqfmSoftwareSystemHelper {
         if (system != null) {
             String softwareSystemName = null;
             Boolean hasSoftwareSystemName = false;
-            if (system.getName() != null && !system.getName().isBlank() && !system.getName().isEmpty()) {
+            if (system.getName() != null && !system.getName().isEmpty()) {
                 softwareSystemName = system.getName();
                 hasSoftwareSystemName = true;
             }
 
             String version = null;
             Boolean hasVersion = false;
-            if (system.getVersion() != null && !system.getVersion().isBlank() && !system.getVersion().isEmpty()) {
+            if (system.getVersion() != null && !system.getVersion().isEmpty()) {
                 version = system.getVersion();
                 hasVersion = true;
             }

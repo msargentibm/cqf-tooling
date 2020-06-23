@@ -108,7 +108,7 @@ public class STU3LibraryProcessor implements LibraryProcessor{
 
         resolveDataRequirements(library, translator);
         attachContent(library, translator, IOUtils.getCqlString(cqlContentPath));
-        cqfmHelper.ensureToolingExtensionAndDevice(library);
+        cqfmHelper.ensureCQFToolingExtensionAndDevice(library);
         // BaseNarrativeProvider<Narrative> narrativeProvider = new NarrativeProvider();
         // INarrative narrative = narrativeProvider.getNarrative(fhirContext, library);
         // library.setText((Narrative) narrative);

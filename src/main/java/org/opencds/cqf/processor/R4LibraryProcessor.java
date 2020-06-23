@@ -110,7 +110,7 @@ public class R4LibraryProcessor implements LibraryProcessor{
 
         resolveDataRequirements(library, translator);
         attachContent(library, translator, IOUtils.getCqlString(cqlContentPath));
-        cqfmHelper.ensureToolingExtensionAndDevice(library);
+        cqfmHelper.ensureCQFToolingExtensionAndDevice(library);
         // BaseNarrativeProvider<Narrative> narrativeProvider = new org.opencds.cqf.library.r4.NarrativeProvider();
         // INarrative narrative = narrativeProvider.getNarrative(fhirContext, library);
         // library.setText((Narrative) narrative);

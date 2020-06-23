@@ -106,6 +106,7 @@ public class IGProcessor {
         Boolean includeTerminology = params.includeTerminology;
         Boolean includePatientScenarios = params.includePatientScenarios;
         Boolean versioned = params.versioned;
+        Boolean cdsHooksIg = params.cdsHooksIg;
         String fhirUri = params.fhirUri;
 
         ArrayList<String> resourceDirs = params.resourceDirs;
@@ -120,7 +121,7 @@ public class IGProcessor {
                 //ask about how to do this better
                 String libraryPath;
                 libraryPath = IOUtils.getLibraryPathAssociatedWithCqlFileName(cqlPath, fhirContext);
-                if (libraryPath != null && !libraryPath.isBlank() && !libraryPath.isEmpty()) {
+                if (libraryPath != null && !libraryPath.isEmpty()) {
                     artifactNamesToPackage.add(FilenameUtils.getBaseName(cqlPath));
                 }
                 else {
@@ -134,7 +135,7 @@ public class IGProcessor {
         artifactNamesToPackage.addAll(measurePaths);
 
         IGBundleProcessor.bundleIg(artifactNamesToPackage, igPath, encoding, includeELM, includeDependencies,
-                includeTerminology, includePatientScenarios, versioned, fhirContext, fhirUri, softwareSystems);
+                includeTerminology, includePatientScenarios, versioned, cdsHooksIg, fhirContext, fhirUri, softwareSystems);
     }
     
     public static FhirContext getIgFhirContext(IGVersion igVersion)

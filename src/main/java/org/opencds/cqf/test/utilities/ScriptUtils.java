@@ -14,6 +14,7 @@ import org.opencds.cqf.testcase.MeasureTestScript;
 import org.opencds.cqf.testcase.MeasureTestScript.Test;
 import org.opencds.cqf.testcase.MeasureTestScript.Test.ExpectedResponse;
 import org.opencds.cqf.testcase.ObjectFactory;
+import org.opencds.cqf.utilities.IOUtils;
 
 import javax.xml.bind.*;
 import javax.xml.namespace.QName;

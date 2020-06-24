@@ -4,7 +4,7 @@ import org.opencds.cqf.Operation;
 import org.opencds.cqf.parameter.TestIGParameters;
 import org.opencds.cqf.processor.argument.TestIGArgumentsProcessor;
 import org.opencds.cqf.processor.IGTestProcessor;
-import org.opencds.cqf.utilities.PropertyUtils;
+import org.opencds.cqf.test.utilities.PropertyUtils;
 
 public class TestIGOperation extends Operation {
     public TestIGOperation() {

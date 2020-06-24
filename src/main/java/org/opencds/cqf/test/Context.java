@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
-import org.opencds.cqf.utilities.PropertyUtils;
+import org.opencds.cqf.test.utilities.PropertyUtils;
 
 import java.io.IOException;
 import java.util.HashMap;

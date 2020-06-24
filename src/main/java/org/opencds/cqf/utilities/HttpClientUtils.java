@@ -15,6 +15,28 @@ import org.opencds.cqf.utilities.IOUtils.Encoding;
 import ca.uhn.fhir.context.FhirContext;
 
 public class HttpClientUtils {
+//    NOTE: Following is from cqf-ruler-test, kept for now for reference.
+//    public static String post(String fhirServerUrl, String resourceString) throws IOException {
+//        try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()) {
+//            HttpPost post = new HttpPost(fhirServerUrl);
+//            post.addHeader("content-type", "application/json");
+//
+//            StringEntity input = new StringEntity(resourceString);
+//            post.setEntity(input);
+//            HttpResponse response = httpClient.execute(post);
+//            BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+//            String responseMessage = "";
+//            String line = "";
+//            while ((line = rd.readLine()) != null) {
+//                responseMessage += line;
+//            }
+//            if (responseMessage.indexOf("error") > -1) {
+//                throw new IOException("Error posting resource to FHIR server (" + fhirServerUrl + "). Resource was not posted:\r\n" + resourceString);
+//            }
+//            return responseMessage;
+//        }
+//    }
+
     public static void post(String fhirServerUrl, IAnyResource resource, Encoding encoding, FhirContext fhirContext)
             throws IOException {  
         try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()) {

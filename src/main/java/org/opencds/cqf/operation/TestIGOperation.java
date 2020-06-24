@@ -1,9 +1,10 @@
 package org.opencds.cqf.operation;
 
 import org.opencds.cqf.Operation;
-import org.opencds.cqf.TestIGArgumentsProcessor;
-import org.opencds.cqf.TestIGParameters;
-import org.opencds.cqf.TestIGProcessor;
+import org.opencds.cqf.parameter.TestIGParameters;
+import org.opencds.cqf.processor.argument.TestIGArgumentsProcessor;
+import org.opencds.cqf.processor.IGTestProcessor;
+import org.opencds.cqf.utilities.PropertyUtils;
 
 public class TestIGOperation extends Operation {
     public TestIGOperation() {
@@ -12,6 +13,7 @@ public class TestIGOperation extends Operation {
     @Override
     public void execute(String[] args) {
 
+        PropertyUtils.loadProperties(args);
         TestIGParameters params = null;
         try {
             params = new TestIGArgumentsProcessor().parseAndConvert(args);
@@ -21,6 +23,6 @@ public class TestIGOperation extends Operation {
             System.exit(1);
         }
 
-        new TestIGProcessor().testIg(params);
+        new IGTestProcessor().testIg(params);
     }
 }

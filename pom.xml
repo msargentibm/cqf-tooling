@@ -250,20 +250,27 @@
             </exclusions>
         </dependency>
 
+<!--        <dependency>-->
+<!--            <groupId>org.opencds.cqf</groupId>-->
+<!--            <artifactId>cqf-ruler-test</artifactId>-->
+<!--            <version>${cqfrulertest.version}</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>jaxb</groupId>-->
+<!--                    <artifactId>jaxb-api</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>org.jvnet.jaxb2_commons</groupId>-->
+<!--                    <artifactId>jaxb2-basics</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
+
+        <!-- cqf-ruler-test dependencies -->
         <dependency>
-            <groupId>org.opencds.cqf</groupId>
-            <artifactId>cqf-ruler-test</artifactId>
-            <version>${cqfrulertest.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>jaxb</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.jvnet.jaxb2_commons</groupId>
-                    <artifactId>jaxb2-basics</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.kohsuke</groupId>
+            <artifactId>github-api</artifactId>
+            <version>1.101</version>
         </dependency>
 
         <!-- CQL engine dependencies -->
@@ -375,6 +382,48 @@
                     <groupId>org.jvnet.jaxb2.maven2</groupId>
                     <artifactId>maven-jaxb2-plugin</artifactId>
                     <version>0.14.0</version>
+                    <executions>
+                        <execution>
+                            <id>generate</id>
+                            <goals>
+                                <goal>generate</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <schemaDirectory>${project.basedir}/src/main/resources/org/opencds/cqf/test/schemas</schemaDirectory>
+                        <schemaIncludes>
+                            <include>measure-test-script.xsd</include>
+                            <include>cds-hooks-test-script.xsd</include>
+                        </schemaIncludes>
+                        <episode>false</episode>
+                        <args>
+                            <arg>-Xfluent-api</arg>
+                            <arg>-Xequals</arg>
+                            <arg>-XhashCode</arg>
+                            <arg>-XtoString</arg>
+                            <arg>-npa</arg>
+                            <arg>-XautoInheritance</arg>
+                            <arg>-XautoInheritance-xmlRootElementsExtend=org.opencds.cqf.TestScript</arg>
+                        </args>
+                        <plugins>
+                            <plugin>
+                                <groupId>org.jvnet.jaxb2_commons</groupId>
+                                <artifactId>jaxb2-fluent-api</artifactId>
+                                <version>3.0</version>
+                            </plugin>
+                            <plugin>
+                                <groupId>org.jvnet.jaxb2_commons</groupId>
+                                <artifactId>jaxb2-basics</artifactId>
+                                <version>0.9.4</version>
+                            </plugin>
+                        </plugins>
+                        <generateDirectory>src/generated/java</generateDirectory>
+                        <generatePackage>org.opencds.cqf.testcase</generatePackage>
+                        <readOnly>false</readOnly>
+                        <markGenerated>false</markGenerated>
+                        <disableXmlSecurity>true</disableXmlSecurity>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -382,7 +431,7 @@
                     <configuration>
                         <source>1.8</source>
                         <target>1.8</target>
-                        <release>8</release>
+<!--                        <release>8</release>-->
                     </configuration>
                 </plugin>
                 <plugin>
@@ -501,6 +550,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.0.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/generated/java</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>

@@ -47,7 +47,7 @@ public class STU3LibraryProcessor implements LibraryProcessor{
         Boolean libraryExists = false;
         Library resource = null;
         if (libraryPath != null) {
-            resource = (Library)IOUtils.readResource(libraryPath, fhirContext, true);
+            resource = (Library) IOUtils.readResource(libraryPath, fhirContext, true);
             libraryExists = resource != null;
         }
 

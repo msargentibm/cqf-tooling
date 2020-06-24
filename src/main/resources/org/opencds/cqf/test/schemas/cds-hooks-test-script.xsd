@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sch="http://purl.oclc.org/dsdl/schematron" elementFormDefault="qualified">
+    <xs:include schemaLocation="base-test-script.xsd"/>
+    <xs:element name="CDSHooksTestScript">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:string"/>
+                <xs:element name="enabled" type="xs:boolean"/>
+                <xs:element name="fhirVersion" type="xs:string"/>
+                <xs:element name="description" type="xs:string"/>
+                <xs:element name="loadArtifacts">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="resource" type="resourceItems" minOccurs="0" maxOccurs="unbounded"/>
+                            <xs:element name="gitHubResource" type="gitHubResourceItems" minOccurs="0" maxOccurs="unbounded"/>
+                            <xs:element name="bundle" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="test" minOccurs="0" maxOccurs="unbounded">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="id" type="xs:string"/>
+                            <xs:element name="cdsServiceId" type="xs:string"/>
+                            <xs:element name="requestJsonSource">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="resource" type="resourceItems" minOccurs="0"/>
+                                        <xs:element name="gitHubResource" type="gitHubResourceItems" minOccurs="0"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                            <xs:element name="expectedResponseJsonSource">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="resource" type="resourceItems" minOccurs="0"/>
+                                        <xs:element name="gitHubResource" type="gitHubResourceItems" minOccurs="0"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

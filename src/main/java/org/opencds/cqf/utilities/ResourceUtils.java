@@ -1,5 +1,6 @@
 package org.opencds.cqf.utilities;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -450,5 +451,85 @@ public class ResourceUtils
     public static BaseRuntimeElementDefinition getElementDefinition(FhirContext fhirContext, String ElementName) {
         BaseRuntimeElementDefinition<?> def = fhirContext.getElementDefinition(ElementName);
         return def;
+    }
+
+    private static IBase getFirstFromDefintion(Object value, BaseRuntimeChildDefinition definition) {
+        BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
+        if (value == null || accessor == null) {
+            return null;
+        }
+
+        List<IBase> values = accessor.getValues((IBase)value);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        if (values.size() > 1) {
+            throw new IllegalArgumentException("More than one value returned while attempting to access primitive value.");
+        }
+
+        return values.get(0);
+    }
+    static List<IBase> getFromDefintion(Object value, BaseRuntimeChildDefinition definition) {
+        BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
+        if (value == null || accessor == null) {
+            return null;
+        }
+
+        List<IBase> values = accessor.getValues((IBase)value);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        return values;
+    }
+    private static String getStringValueFromPrimitiveDefinition(IBase value, BaseRuntimeChildDefinition definition) {
+        BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
+        if (value == null || accessor == null) {
+            return null;
+        }
+
+        List<IBase> values = accessor.getValues(value);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        if (values.size() > 1) {
+            throw new IllegalArgumentException("More than one value returned while attempting to access primitive value.");
+        }
+
+        IBase baseValue = values.get(0);
+
+        if (!(baseValue instanceof IPrimitiveType)) {
+            throw new IllegalArgumentException("Non-primitive value encountered while trying to access primitive value.");
+        }
+        else {
+            return ((IPrimitiveType)baseValue).getValueAsString();
+        }
+    }
+
+    static BigInteger getBigIntegerValueFromPrimitiveDefinition(IBase value, BaseRuntimeChildDefinition definition) {
+        BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
+        if (value == null || accessor == null) {
+            return null;
+        }
+
+        List<IBase> values = accessor.getValues(value);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+
+        if (values.size() > 1) {
+            throw new IllegalArgumentException("More than one value returned while attempting to access primitive value.");
+        }
+
+        IBase baseValue = values.get(0);
+
+        if (!(baseValue instanceof IPrimitiveType)) {
+            throw new IllegalArgumentException("Non-primitive value encountered while trying to access primitive value.");
+        }
+        else {
+            return BigInteger.valueOf((Integer)((IPrimitiveType)baseValue).getValue());
+        }
     }
 }

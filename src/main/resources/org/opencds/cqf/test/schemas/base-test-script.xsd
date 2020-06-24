@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sch="http://purl.oclc.org/dsdl/schematron" elementFormDefault="qualified">
+    <xs:complexType name="resourceItems">
+        <xs:sequence>
+            <xs:element name="path" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="gitHubResourceItems">
+        <xs:sequence>
+            <xs:element name="repositoryName" type="xs:string"/>
+            <xs:element name="branch" type="xs:string"/>
+            <xs:element name="path" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>

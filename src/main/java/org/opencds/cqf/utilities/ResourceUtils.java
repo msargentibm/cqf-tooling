@@ -470,7 +470,7 @@ public class ResourceUtils
 
         return values.get(0);
     }
-    static List<IBase> getFromDefintion(Object value, BaseRuntimeChildDefinition definition) {
+    public static List<IBase> getFromDefinition(Object value, BaseRuntimeChildDefinition definition) {
         BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
         if (value == null || accessor == null) {
             return null;
@@ -508,7 +508,7 @@ public class ResourceUtils
         }
     }
 
-    static BigInteger getBigIntegerValueFromPrimitiveDefinition(IBase value, BaseRuntimeChildDefinition definition) {
+    public static BigInteger getBigIntegerValueFromPrimitiveDefinition(IBase value, BaseRuntimeChildDefinition definition) {
         BaseRuntimeChildDefinition.IAccessor accessor = definition.getAccessor();
         if (value == null || accessor == null) {
             return null;

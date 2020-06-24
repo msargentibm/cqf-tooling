@@ -2,14 +2,14 @@ package org.opencds.cqf.test.evaluate;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import com.google.gson.JsonObject;
-import org.opencds.cqf.Context;
+import org.opencds.cqf.test.Context;
 import org.opencds.cqf.testcase.CDSHooksTestScript;
 import org.opencds.cqf.testcase.GitHubResourceItems;
 import org.opencds.cqf.testcase.ResourceItems;
-import org.opencds.cqf.utilities.GithubUtils;
+import org.opencds.cqf.test.utilities.GithubUtils;
 import org.opencds.cqf.utilities.HttpClientUtils;
-import org.opencds.cqf.utilities.JsonUtils;
-import org.opencds.cqf.utilities.ResourceLoadingUtils;
+import org.opencds.cqf.test.utilities.JsonUtils;
+import org.opencds.cqf.test.utilities.ResourceLoadingUtils;
 
 import java.io.IOException;
 import java.io.InputStream;

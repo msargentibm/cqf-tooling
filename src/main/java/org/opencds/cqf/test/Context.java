@@ -29,7 +29,7 @@ public class Context {
     private String cdsDiscoveryStu3Endpoint;
     private String cdsDiscoveryR4Endpoint;
 
-    Context() {
+    public Context() {
         this.stu3Context = FhirContext.forDstu3();
         this.r4Context = FhirContext.forR4();
         this.stu3Client = stu3Context.newRestfulGenericClient(PropertyUtils.getStu3Endpoint());

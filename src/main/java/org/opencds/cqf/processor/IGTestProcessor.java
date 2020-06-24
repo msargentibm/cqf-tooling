@@ -3,6 +3,7 @@ package org.opencds.cqf.processor;
 import org.opencds.cqf.test.Context;
 import org.opencds.cqf.test.TestScript;
 import org.opencds.cqf.parameter.TestIGParameters;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils;
 import org.opencds.cqf.test.utilities.MeasureTestConfig;
 import org.opencds.cqf.test.utilities.ScriptUtils;
@@ -37,7 +38,7 @@ public class IGTestProcessor {
         }
 
         IOUtils.setIgPath(igPath);
-        FhirContext fhirContext = (igVersion == null) ? IOUtils.getFhirContextFromIni(igPath) : getIgFhirContext(igVersion);
+        FhirContext fhirContext = (igVersion == null) ? IGUtils.getFhirContextFromIni(igPath) : getIgFhirContext(igVersion);
 
 
         File scriptDirectory = new File(scriptsPath);

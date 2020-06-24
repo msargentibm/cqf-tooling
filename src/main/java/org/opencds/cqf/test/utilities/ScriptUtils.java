@@ -7,14 +7,16 @@ import org.hl7.fhir.instance.model.api.IAnyResource;
 import org.hl7.fhir.instance.model.api.IBase;
 import org.hl7.fhir.instance.model.api.IPrimitiveType;
 import org.hl7.fhir.r4.model.CanonicalType;
-import org.opencds.cqf.TestScript;
-import org.opencds.cqf.evaluate.ObjectFactoryEx;
+import org.opencds.cqf.test.TestScript;
+import org.opencds.cqf.test.evaluate.ObjectFactoryEx;
 import org.opencds.cqf.testcase.GroupItems;
 import org.opencds.cqf.testcase.MeasureTestScript;
 import org.opencds.cqf.testcase.MeasureTestScript.Test;
 import org.opencds.cqf.testcase.MeasureTestScript.Test.ExpectedResponse;
 import org.opencds.cqf.testcase.ObjectFactory;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils;
+import org.opencds.cqf.utilities.ResourceUtils;
 
 import javax.xml.bind.*;
 import javax.xml.namespace.QName;
@@ -65,7 +67,7 @@ public class ScriptUtils {
         String fhirVersion = fhirContext.getVersion().getVersion().getFhirVersionString();
         if (fhirVersion == null)
         {
-            fhirVersion = IOUtils.getFhirContextFromIni(pathToIG).getVersion().getVersion().getFhirVersionString();
+            fhirVersion = IGUtils.getFhirContextFromIni(pathToIG).getVersion().getVersion().getFhirVersionString();
         }
 
         File bundlesDir = new File(FilenameUtils.concat(pathToIG, "bundles"));
@@ -122,7 +124,7 @@ public class ScriptUtils {
                                 continue;
                             }
 
-                            String patientChildString = IOUtils.resolveProperty(patientChild, "reference", fhirContext).toString();
+                            String patientChildString = ResourceUtils.resolveProperty(patientChild, "reference", fhirContext).toString();
                             String patientChildIdAsFileName = patientChildString.replace("Patient/", "") + ".json";
                             Optional<String> optionalPatientPath = IOUtils.getPatientPaths(fhirContext).stream()
                                     .filter(patientPath -> patientPath.replaceAll("_", "-").contains(patientChildIdAsFileName)).findFirst();
@@ -133,7 +135,7 @@ public class ScriptUtils {
                             else continue;
 
                             String measureChildString;
-                            Object measureChildReferenceProperty = IOUtils.resolveProperty(measureChild, "reference", fhirContext);
+                            Object measureChildReferenceProperty = ResourceUtils.resolveProperty(measureChild, "reference", fhirContext);
                             if (measureChildReferenceProperty instanceof CanonicalType) {
                                 measureChildString = ((CanonicalType)measureChildReferenceProperty).asStringValue();
                             }
@@ -152,15 +154,15 @@ public class ScriptUtils {
                             }
                             String groupValueChildString;
                             if (identifierChildDefinition == null) {
-                                groupValueChildString = IOUtils.resolveProperty(groupChild, "id", fhirContext).toString();
+                                groupValueChildString = ResourceUtils.resolveProperty(groupChild, "id", fhirContext).toString();
                             }
                             else  {
                                 IBase identifierChild = getFirstFromDefintion(groupChild, identifierChildDefinition);
-                                groupValueChildString = IOUtils.resolveProperty(identifierChild, "value", fhirContext).toString();
+                                groupValueChildString = ResourceUtils.resolveProperty(identifierChild, "value", fhirContext).toString();
                             }
 
                             Map<String, BigInteger> populationValueCountMap = new HashMap<String, BigInteger>();
-                            List<IBase> populationChildren = IOUtils.getFromDefintion(groupChild, populationChildDefinition);
+                            List<IBase> populationChildren = ResourceUtils.getFromDefinition(groupChild, populationChildDefinition);
                             if (populationChildren.isEmpty()) {
                                 continue;
                             }
@@ -170,16 +172,16 @@ public class ScriptUtils {
                                 String populationCode = CodeUtil.getCodesFromObject(codeChild, fhirContext).get(0);
                                 populationValueCountMap.put(
                                     populationCode,
-                                    IOUtils.getBigIntegerValueFromPrimitiveDefinition(populationChild, countChildDefinition));
+                                    ResourceUtils.getBigIntegerValueFromPrimitiveDefinition(populationChild, countChildDefinition));
                             }
                             fhirContext.getVersion().getVersion().equals(FhirVersionEnum.R4);
-                            Object measureScore = IOUtils.resolveProperty(groupChild, "measureScore", fhirContext);
+                            Object measureScore = ResourceUtils.resolveProperty(groupChild, "measureScore", fhirContext);
                             BigDecimal measureScoreValue;
                             if (measureScore instanceof BigDecimal) {
                                 measureScoreValue = (BigDecimal)measureScore;
                             }
                             else {
-                                measureScoreValue = (BigDecimal) IOUtils.resolveProperty(measureScore, "value", fhirContext);
+                                measureScoreValue = (BigDecimal) ResourceUtils.resolveProperty(measureScore, "value", fhirContext);
                             }
                             if (measureScoreValue == null) {
                                     measureTestConfig.setExpectedResponse(new ExpectedResponse().withGroup(

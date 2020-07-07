@@ -1,21 +1,37 @@
 package org.opencds.cqf.acceleratorkit;
 
-import ca.uhn.fhir.context.FhirContext;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.hl7.fhir.r4.model.*;
-
+import org.hl7.fhir.r4.model.CanonicalType;
+import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Element;
+import org.hl7.fhir.r4.model.ElementDefinition;
+import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.StructureDefinition;
+import org.hl7.fhir.r4.model.Type;
+import org.hl7.fhir.r4.model.UriType;
+import org.hl7.fhir.r4.model.ValueSet;
 import org.jetbrains.annotations.NotNull;
 import org.opencds.cqf.Operation;
-import org.opencds.cqf.modelinfo.*;
 import org.opencds.cqf.terminology.SpreadsheetHelper;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.*;
+import ca.uhn.fhir.context.FhirContext;
 
 /**
  * Created by Bryn on 8/18/2019.
@@ -479,7 +495,7 @@ public class Processor extends Operation {
 
     private void addInputOptionToParentElement(Row row, HashMap<String, Integer> colIds) {
         String parentName = SpreadsheetHelper.getCellAsStringTrimmed(row, getColId(colIds,"InputOptionParent")).trim();
-        if (parentName != null || !parentName.isEmpty())
+        if (parentName != null && !parentName.isEmpty())
         {
             DictionaryElement currentElement = elementMap.get(parentName);
             if (currentElement != null) {
@@ -854,7 +870,7 @@ public class Processor extends Operation {
         StructureDefinition.StructureDefinitionContextComponent context = new StructureDefinition.StructureDefinitionContextComponent();
         context.setType(StructureDefinition.ExtensionContextType.ELEMENT);
         context.setExpression(element.getFhirElementPath().getResourceType());
-        List<StructureDefinition.StructureDefinitionContextComponent> contextList = new ArrayList();
+        List<StructureDefinition.StructureDefinitionContextComponent> contextList = new ArrayList<>();
         contextList.add(context);
         sd.setContext(contextList);
 

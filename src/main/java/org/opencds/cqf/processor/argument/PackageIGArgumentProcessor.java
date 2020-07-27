@@ -6,10 +6,9 @@ import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
 import org.opencds.cqf.common.CqfmSoftwareSystem;
 import org.opencds.cqf.parameter.PackageIGParameters;
-import org.opencds.cqf.parameter.RefreshIGParameters;
 import org.opencds.cqf.processor.IGProcessor;
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
 import org.opencds.cqf.utilities.ArgUtils;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
 
 import java.util.ArrayList;
@@ -109,7 +108,7 @@ public class PackageIGArgumentProcessor {
         PackageIGParameters ip = new PackageIGParameters();
         ip.igResourcePath = igResourcePath;
         ip.igPath = igPath;
-        ip.igVersion = IGVersion.parse(igVersion);
+        ip.FHIRVersion = IGUtils.FHIRVersion.parse(igVersion);
         ip.outputEncoding = outputEncodingEnum;
         ip.includeELM = includeELM;
         ip.includeDependencies = includeDependencies;

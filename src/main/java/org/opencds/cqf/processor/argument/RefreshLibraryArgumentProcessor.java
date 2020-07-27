@@ -3,14 +3,13 @@ package org.opencds.cqf.processor.argument;
 import static java.util.Arrays.asList;
 
 import org.opencds.cqf.parameter.RefreshLibraryParameters;
-import org.opencds.cqf.processor.IGProcessor;
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
 import org.opencds.cqf.utilities.ArgUtils;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
 
 
@@ -70,7 +69,7 @@ public class RefreshLibraryArgumentProcessor {
         RefreshLibraryParameters lp = new RefreshLibraryParameters();
         lp.igCanonicalBase = igCanonicalBase;
         lp.cqlContentPath = cqlPath;
-        lp.fhirContext = IGProcessor.getIgFhirContext(IGVersion.parse(fhirVersion));
+        lp.fhirContext = IGUtils.getFhirContext(IGUtils.FHIRVersion.parse(fhirVersion));
         lp.encoding = outputEncodingEnum;
         lp.versioned = versioned;
         lp.libraryPath = libraryPath;

@@ -4,8 +4,8 @@ import org.opencds.cqf.Operation;
 import org.opencds.cqf.parameter.BundleTestCasesParameters;
 import org.opencds.cqf.processor.TestCaseProcessor;
 import org.opencds.cqf.processor.argument.BundleTestCasesArgumentProcessor;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
-import org.opencds.cqf.utilities.ResourceUtils;
 
 import ca.uhn.fhir.context.FhirContext;
 
@@ -26,7 +26,7 @@ public class BundleTestCasesOperation extends Operation {
             System.exit(1);
         }
  
-        FhirContext fhirContext = ResourceUtils.getFhirContext(ResourceUtils.FhirVersion.parse(params.igVersion.toString()));
+        FhirContext fhirContext = IGUtils.getFhirContext(IGUtils.FHIRVersion.parse(params.FHIRVersion.toString()));
         TestCaseProcessor.refreshTestCases(params.path, Encoding.JSON, fhirContext);
     }
 }

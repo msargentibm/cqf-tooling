@@ -36,33 +36,6 @@ import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
 
 public class ResourceUtils 
 {
-    public enum FhirVersion 
-    { 
-        DSTU3("dstu3"), R4("r4"); 
-
-        private String string;     
-        public String toString() 
-        { 
-            return this.string; 
-        } 
-    
-        private FhirVersion(String string) 
-        { 
-            this.string = string; 
-        }
-
-        public static FhirVersion parse(String value) {
-            switch (value) {
-                case "dstu3": 
-                    return DSTU3;
-                case "r4":
-                    return R4;
-                default: 
-                    throw new RuntimeException("Unable to parse FHIR version value:" + value);
-            }
-        }
-    }
-
     public static String getId(String name, String version, boolean versioned) {
       return name.replaceAll("_", "-") + (versioned ? "-" + version.replaceAll("_", ".") : "");
     }
@@ -88,17 +61,6 @@ public class ResourceUtils
       }
       igId = igId.replace("_", "-");
       resource.setId(igId);
-    }
-
-    public static FhirContext getFhirContext(FhirVersion fhirVersion) {
-      switch (fhirVersion) {
-        case DSTU3:
-          return FhirContext.forDstu3();
-        case R4:
-          return FhirContext.forR4();
-        default:
-          throw new IllegalArgumentException("Unknown FHIR version: " + fhirVersion);
-      }
     }
 
     private static List<org.hl7.fhir.dstu3.model.RelatedArtifact> getStu3RelatedArtifacts(String pathToLibrary, FhirContext fhirContext) {

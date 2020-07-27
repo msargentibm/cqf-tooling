@@ -1,7 +1,7 @@
 package org.opencds.cqf.parameter;
 
 import org.opencds.cqf.common.CqfmSoftwareSystem;
-import org.opencds.cqf.processor.IGProcessor;
+import org.opencds.cqf.utilities.IGUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
 public class PackageIGParameters {
     public String igResourcePath;
     public String igPath;
-    public IGProcessor.IGVersion igVersion;
+    public IGUtils.FHIRVersion FHIRVersion;
     public org.opencds.cqf.utilities.IOUtils.Encoding outputEncoding;
     public Boolean includeELM;
     public Boolean includeDependencies;

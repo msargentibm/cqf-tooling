@@ -17,7 +17,7 @@ public class MeasureTestScriptEvaluator extends MeasureTestScript {
 
     @Override
     public Object run(Context context) {
-        
+
             if (isEnabled()) {
                 if (!IOUtils.resourceDirectories.contains(getPathToIG())) {
                     IOUtils.clearPathsCache();
@@ -43,7 +43,7 @@ public class MeasureTestScriptEvaluator extends MeasureTestScript {
                                     .operation()
                                     .onInstance(new IdDt("Measure", test.getMeasureId()))
                                     .named("$evaluate-measure");
-    
+
                     if (context.isStu3(getFhirVersion())) {
                         org.hl7.fhir.dstu3.model.Parameters result =
                                 operation
@@ -77,7 +77,7 @@ public class MeasureTestScriptEvaluator extends MeasureTestScript {
                         System.out.println(e.getMessage());
                     }
             }
-        } 
+        }
         return null;
     }
 
@@ -386,8 +386,8 @@ public class MeasureTestScriptEvaluator extends MeasureTestScript {
                 ResourceLoadingUtils.loadResourceAt(terminologyPath, client);
             }
         }
-        
-        
+
+
     }
 
     private void loadPatientData(Context context, Test test) {

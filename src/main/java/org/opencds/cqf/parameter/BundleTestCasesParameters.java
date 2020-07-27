@@ -1,8 +1,8 @@
 package org.opencds.cqf.parameter;
 
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
+import org.opencds.cqf.utilities.IGUtils;
 
-public class BundleTestCasesParameters {  
+public class BundleTestCasesParameters {
     public String path;
-    public IGVersion igVersion;
+    public IGUtils.FHIRVersion FHIRVersion;
 }

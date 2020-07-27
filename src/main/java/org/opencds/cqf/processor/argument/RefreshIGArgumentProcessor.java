@@ -8,8 +8,8 @@ import java.util.List;
 
 import org.opencds.cqf.parameter.RefreshIGParameters;
 import org.opencds.cqf.processor.IGProcessor;
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
 import org.opencds.cqf.utilities.ArgUtils;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
 
 import joptsimple.OptionParser;
@@ -107,7 +107,7 @@ public class RefreshIGArgumentProcessor {
         RefreshIGParameters ip = new RefreshIGParameters();
         ip.igResourcePath = igResourcePath;
         ip.igPath = igPath;
-        ip.igVersion = IGVersion.parse(igVersion);
+        ip.FHIRVersion = IGUtils.FHIRVersion.parse(igVersion);
         ip.outputEncoding = outputEncodingEnum;
         ip.includeELM = includeELM;
         ip.includeDependencies = includeDependencies;

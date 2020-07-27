@@ -2,13 +2,13 @@ package org.opencds.cqf.parameter;
 
 import java.util.ArrayList;
 
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
+import org.opencds.cqf.utilities.IGUtils;
 import org.opencds.cqf.utilities.IOUtils.Encoding;
 
 public class RefreshIGParameters {
     public String igResourcePath;
     public String igPath;
-    public IGVersion igVersion;
+    public IGUtils.FHIRVersion FHIRVersion;
     public Encoding outputEncoding;
     public Boolean includeELM;
     public Boolean includeDependencies;

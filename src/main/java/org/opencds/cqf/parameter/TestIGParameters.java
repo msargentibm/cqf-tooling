@@ -1,13 +1,11 @@
 package org.opencds.cqf.parameter;
 
-import java.util.ArrayList;
-
-import org.opencds.cqf.processor.IGTestProcessor;
+import org.opencds.cqf.utilities.IGUtils;
 
 public class TestIGParameters {
     public String igPath;
-    public String fhirUri;
-    public IGTestProcessor.IGVersion igVersion;
-    public ArrayList<String> resourceDirs;
-    public String scriptsPath;
+    public String fhirServerUri;
+    public IGUtils.FHIRVersion FHIRVersion;
+//    public ArrayList<String> resourceDirs;
+    public String testCasesPath;
 }

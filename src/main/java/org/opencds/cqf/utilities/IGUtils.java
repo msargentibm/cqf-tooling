@@ -1,7 +1,6 @@
 package org.opencds.cqf.utilities;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.context.RuntimeResourceDefinition;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
@@ -9,6 +8,43 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class IGUtils {
+    public enum FHIRVersion {
+        FHIR3("fhir3"), FHIR4("fhir4");
+
+        private String string;
+
+        public String toString() {
+            return this.string;
+        }
+
+        private FHIRVersion(String string) {
+            this.string = string;
+        }
+
+        public static FHIRVersion parse(String value) {
+            switch (value) {
+                case "fhir3":
+                    return FHIR3;
+                case "fhir4":
+                    return FHIR4;
+                default:
+                    throw new RuntimeException("Unable to parse IG version value:" + value);
+            }
+        }
+    }
+
+    public static FhirContext getFhirContext(FHIRVersion FHIRVersion)
+    {
+        switch (FHIRVersion) {
+            case FHIR3:
+                return FhirContext.forDstu3();
+            case FHIR4:
+                return FhirContext.forR4();
+            default:
+                throw new IllegalArgumentException("Unknown IG version: " + FHIRVersion);
+        }
+    }
+
     public static String getImplementationGuideCanonicalBase(String url) {
         String canonicalBase = null;
 

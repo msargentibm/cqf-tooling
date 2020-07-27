@@ -15,45 +15,43 @@ import org.apache.commons.io.FilenameUtils;
 import org.opencds.cqf.common.CqfmSoftwareSystem;
 import org.opencds.cqf.parameter.PackageIGParameters;
 import org.opencds.cqf.parameter.RefreshIGParameters;
-import org.opencds.cqf.parameter.RefreshLibraryParameters;
 import org.opencds.cqf.utilities.*;
 import org.opencds.cqf.utilities.IOUtils;
-import org.opencds.cqf.utilities.IOUtils.Encoding;
 import org.opencds.cqf.utilities.LogUtils;
 
 import ca.uhn.fhir.context.FhirContext;
 
 public class IGProcessor {
-    public enum IGVersion {
-        FHIR3("fhir3"), FHIR4("fhir4");
-
-        private String string;
-
-        public String toString() {
-            return this.string;
-        }
-
-        private IGVersion(String string) {
-            this.string = string;
-        }
-
-        public static IGVersion parse(String value) {
-            switch (value) {
-            case "fhir3":
-                return FHIR3;
-            case "fhir4":
-                return FHIR4;
-            default:
-                throw new RuntimeException("Unable to parse IG version value:" + value);
-            }
-        }
-    }
+//    public enum IGVersion {
+//        FHIR3("fhir3"), FHIR4("fhir4");
+//
+//        private String string;
+//
+//        public String toString() {
+//            return this.string;
+//        }
+//
+//        private IGVersion(String string) {
+//            this.string = string;
+//        }
+//
+//        public static IGVersion parse(String value) {
+//            switch (value) {
+//            case "fhir3":
+//                return FHIR3;
+//            case "fhir4":
+//                return FHIR4;
+//            default:
+//                throw new RuntimeException("Unable to parse IG version value:" + value);
+//            }
+//        }
+//    }
 
     //mega ig method
     public static void publishIG(RefreshIGParameters params) {
         String igPath = params.igPath;
         String igResourcePath = params.igResourcePath;
-        IGVersion igVersion = params.igVersion;
+        IGUtils.FHIRVersion FHIRVersion = params.FHIRVersion;
         IOUtils.Encoding encoding = params.outputEncoding;
         Boolean includeELM = params.includeELM;
         Boolean includeDependencies = params.includeDependencies;
@@ -67,7 +65,7 @@ public class IGProcessor {
 
         IOUtils.resourceDirectories.addAll(resourceDirs);
 
-        FhirContext fhirContext = IGProcessor.getIgFhirContext(igVersion);
+        FhirContext fhirContext = IGUtils.getFhirContext(FHIRVersion);
 
         igPath = Paths.get(igPath).toAbsolutePath().toString();
 
@@ -101,7 +99,7 @@ public class IGProcessor {
 
         List<CqfmSoftwareSystem> softwareSystems = params.softwareSystems;
 
-        IGVersion igVersion = params.igVersion;
+        IGUtils.FHIRVersion FHIRVersion = params.FHIRVersion;
         IOUtils.Encoding encoding = params.outputEncoding;
         Boolean includeELM = params.includeELM;
         Boolean includeDependencies = params.includeDependencies;
@@ -114,7 +112,7 @@ public class IGProcessor {
         ArrayList<String> resourceDirs = params.resourceDirs;
         IOUtils.resourceDirectories.addAll(resourceDirs);
 
-        FhirContext fhirContext = IGProcessor.getIgFhirContext(igVersion);
+        FhirContext fhirContext = IGUtils.getFhirContext(FHIRVersion);
 
         ArrayList<String> artifactNamesToPackage = new ArrayList<String>();
         HashSet<String> cqlContentPaths = IOUtils.getCqlLibraryPaths();
@@ -140,35 +138,23 @@ public class IGProcessor {
                 includeTerminology, includePatientScenarios, versioned, cdsHooksIg, fhirContext, fhirUri, softwareSystems);
     }
     
-    public static FhirContext getIgFhirContext(IGVersion igVersion)
-    {
-        switch (igVersion) {
-            case FHIR3:
-                return FhirContext.forDstu3();
-            case FHIR4:
-                return FhirContext.forR4();
-            default:
-                throw new IllegalArgumentException("Unknown IG version: " + igVersion);
-        }     
-    }
-    
-    public static IGVersion getIgVersion(String igPath) {
-        IGVersion igVersion = null;
+    public static IGUtils.FHIRVersion getIgVersion(String igPath) {
+        IGUtils.FHIRVersion FHIRVersion = null;
         List<File> igPathFiles = IOUtils.getFilePaths(igPath, false).stream()
             .map(path -> new File(path))
             .collect(Collectors.toList());
         for (File file : igPathFiles) {
             if (FilenameUtils.getExtension(file.getName()).equals("ini")) {
-                igVersion = tryToReadIni(file);
+                FHIRVersion = tryToReadIni(file);
             }
         }
-        if (igVersion == null) {
+        if (FHIRVersion == null) {
             throw new IllegalArgumentException("IG version must be configured in ig.ini or provided as an argument.");
         }
-        else return igVersion;
+        else return FHIRVersion;
     }
 
-    private static IGVersion tryToReadIni(File file) {
+    private static IGUtils.FHIRVersion tryToReadIni(File file) {
         try {
             InputStream inputStream = new FileInputStream(file);
             String igIniContent = new BufferedReader(new InputStreamReader(inputStream))
@@ -185,15 +171,15 @@ public class IGProcessor {
     static final String STU3SPECIFIER = "stu3";
     static final String DSTU3SPECIFIER = "dstu3";
     static final String R4SPECIFIER = "r4";
-    private static IGVersion parseVersion(String[] contentLines) {
+    private static IGUtils.FHIRVersion parseVersion(String[] contentLines) {
         for (String line : contentLines) {
             if (line.toLowerCase().startsWith("fhirspec"))
             {
                 if (line.toLowerCase().contains(R4SPECIFIER)){
-                    return IGVersion.FHIR4;
+                    return IGUtils.FHIRVersion.FHIR4;
                 }
                 else if (line.toLowerCase().contains(STU3SPECIFIER) || line.toLowerCase().contains(DSTU3SPECIFIER)) {
-                    return IGVersion.FHIR3;
+                    return IGUtils.FHIRVersion.FHIR3;
                 }
             }
         }
@@ -236,8 +222,8 @@ public class IGProcessor {
                 throw new RuntimeException("Unable to refresh IG.  All Libraries must begin with \"library \": " + cqlContentPath);
             }
             String strippedLibraryName = FilenameUtils.getBaseName(cqlContentPath);
-            for (IGProcessor.IGVersion igVersion : IGVersion.values()) {                
-                String igVersionToken = "_" + igVersion.toString().toUpperCase();
+            for (IGUtils.FHIRVersion FHIRVersion : IGUtils.FHIRVersion.values()) {
+                String igVersionToken = "_" + FHIRVersion.toString().toUpperCase();
                
                 if (strippedLibraryName.contains(igVersionToken)) {
                     strippedLibraryName = strippedLibraryName.replace(igVersionToken, "");

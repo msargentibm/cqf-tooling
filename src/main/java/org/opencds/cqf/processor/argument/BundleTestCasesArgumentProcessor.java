@@ -4,13 +4,13 @@ import static java.util.Arrays.asList;
 
 import org.opencds.cqf.parameter.BundleTestCasesParameters;
 import org.opencds.cqf.processor.IGProcessor;
-import org.opencds.cqf.processor.IGProcessor.IGVersion;
 import org.opencds.cqf.utilities.ArgUtils;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
+import org.opencds.cqf.utilities.IGUtils;
 
 
 public class BundleTestCasesArgumentProcessor {
@@ -47,7 +47,7 @@ public class BundleTestCasesArgumentProcessor {
 
         BundleTestCasesParameters ip = new BundleTestCasesParameters();
         ip.path = path;
-        ip.igVersion = IGVersion.parse(igVersion);
+        ip.FHIRVersion = IGUtils.FHIRVersion.parse(igVersion);
 
         return ip;
     }

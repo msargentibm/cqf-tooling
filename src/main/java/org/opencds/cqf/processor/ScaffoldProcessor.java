@@ -29,7 +29,7 @@ public class ScaffoldProcessor {
 
         EnsureLibraryPath();
         EnsureMeasurePath();
-        fhirContext = ResourceUtils.getFhirContext(ResourceUtils.FhirVersion.parse(params.igVersion));
+        fhirContext = IGUtils.getFhirContext(IGUtils.FHIRVersion.parse(params.igVersion));
 
         for (Map.Entry<String, List<String>> resourceEntry : params.resourcesToScaffold.entrySet()) {
             String resourceName = resourceEntry.getKey();

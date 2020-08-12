@@ -14,6 +14,8 @@ import org.hl7.elm.r1.ConceptDef;
 import org.hl7.elm.r1.ConceptRef;
 import org.hl7.elm.r1.Expression;
 import org.hl7.elm.r1.IncludeDef;
+import org.hl7.elm.r1.ParameterDef;
+import org.hl7.elm.r1.ParameterRef;
 import org.hl7.elm.r1.Retrieve;
 import org.hl7.elm.r1.ValueSetDef;
 import org.hl7.elm.r1.ValueSetRef;
@@ -25,7 +27,8 @@ public class DataRequirementsExtractor {
             LibraryManager libraryManager) {
         org.hl7.fhir.r4.model.DataRequirement dr = new org.hl7.fhir.r4.model.DataRequirement();
 
-        dr.setType(org.hl7.fhir.r4.model.Enumerations.FHIRAllTypes.fromCode(retrieve.getDataType().getLocalPart()).toCode());
+        dr.setType(org.hl7.fhir.r4.model.Enumerations.FHIRAllTypes.fromCode(retrieve.getDataType().getLocalPart())
+                .toCode());
 
         // Set profile if specified
         if (retrieve.getTemplateId() != null) {
@@ -169,7 +172,7 @@ public class DataRequirementsExtractor {
         return library.resolveCodeSystemRef(codeSystemRef.getName());
     }
 
-    private ValueSetDef resolveValueSetRef(ValueSetRef valueSetRef, TranslatedLibrary library,
+    public ValueSetDef resolveValueSetRef(ValueSetRef valueSetRef, TranslatedLibrary library,
             LibraryManager libraryManager) {
         // If the reference is to another library, resolve to that library
         if (valueSetRef.getLibraryName() != null) {
@@ -177,6 +180,16 @@ public class DataRequirementsExtractor {
         }
 
         return library.resolveValueSetRef(valueSetRef.getName());
+    }
+
+    public ParameterDef resolveParameterRef(ParameterRef parameterRef, TranslatedLibrary library,
+            LibraryManager libraryManager) {
+        // If the reference is to another library, resolve to that library
+        if (parameterRef.getLibraryName() != null) {
+            library = resolveLibrary(parameterRef.getLibraryName(), library, libraryManager);
+        }
+
+        return library.resolveParameterRef(parameterRef.getName());
     }
 
     private TranslatedLibrary resolveLibrary(String localLibraryName, TranslatedLibrary library,

@@ -97,24 +97,52 @@ define "HospiceEncounterClaimsBUnboundDate":
 
   /*
   2b - Bound Measurement Period
+  Interval[@2019-01-01, @2020-01-01 )
   DataRequirement
   type: Claim
-  dateFilter: { path:  item.serviced.start, value "2019"  }
+  dateFilter: { path:  item.serviced.start, valuePeriod: "@2019-01-01-@2020-01-01" },
   */
 
 define "HospiceEncounterClaimsBBoundDate":
     [Claim] CEncounter
       where exists CEncounter.item IEncounter
-        where date from IEncounter.serviced."start" in day of "Measurement Period"
+        where IEncounter.serviced."start" in "Measurement Period"
+
+/*
+2c - Bound Measurement Period
+Interval[@2019-01-01, @2020-01-01)
+DataRequirement
+type: Claim
+dateFilter: { path:  item.serviced.start, valuePeriod: "@2019-01-01T00:00:00.0-@2020-01-01T00:00:00.0" },
+*/
+
+define "HospiceEncounterClaimsBBoundDateFrom":
+    [Claim] CEncounter
+      where exists CEncounter.item IEncounter
+        where date from IEncounter.serviced."start" in "Measurement Period"
+
+
+/*
+2d -
+Interval[@2019-01-01, @2020-01-01)
+DataRequirement
+type: Claim
+*/
+
+define "HospiceEncounterClaimsBBoundDateFromPlus1Day":
+    [Claim] CEncounter
+      where exists CEncounter.item IEncounter
+        where (date from IEncounter.serviced."start") + 1 day in "Measurement Period"
 
 
 
 /*
 2.
 DataRequirement
+Interval[@2019-01-01, @2020-01-01)
 type: Claim
 codeFilter: { path:  item.revenue, valueSet: 'http://fakeurl.com/hospice-encounter' }
-dateFilter: { path: item.serviced.start }
+dateFilter: { path: item.serviced.start, valuePeriod: "@2019-01-01T00:00:00.0-@2020-01-01T00:00:00.0"  }
 */
 
 define "HospiceEncounterClaims":

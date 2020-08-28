@@ -1,18 +1,9 @@
 package org.opencds.cqf.tooling.datarequirements;
 
-import static java.util.stream.Collectors.groupingBy;
-
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
-
-import javax.xml.crypto.Data;
-
 import java.util.Objects;
 import java.util.Stack;
 
@@ -21,14 +12,10 @@ import org.cqframework.cql.cql2elm.model.LibraryRef;
 import org.cqframework.cql.cql2elm.model.TranslatedLibrary;
 import org.cqframework.cql.elm.visiting.BaseVisitor;
 import org.hl7.elm.r1.*;
-import org.hl7.fhir.CodeSystemFilter;
-import org.hl7.fhir.DataRequirementDateFilter;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent;
 import org.hl7.fhir.r4.model.DataRequirement.DataRequirementDateFilterComponent;
-
 import org.hl7.fhir.r4.model.StringType;
 
 public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, Exception> {
@@ -76,6 +63,43 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         return querylevel > 0;
     }
 
+    protected void push(StackFrame stackFrame) {
+        this.stack.push(stackFrame);
+    }
+
+    protected StackFrame peek() {
+        return this.stack.peek();
+    }
+
+    protected  StackFrame pop() {
+        return this.stack.pop();
+    }
+
+    protected List<StackFrame> pop(int count) {
+        List<StackFrame> stackFrames = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            stackFrames.add(this.pop());
+        }
+
+        return stackFrames;
+    }
+
+    protected List<DataRequirement> defaultElementVisit(Element element) {
+        if(!this.isQueryContext()) {
+            return null;
+        }
+
+        if (element instanceof OperatorExpression) {
+            OperatorExpression expression = (OperatorExpression)element;
+
+            this.push(StackFrameOperations.mergeFrames(this.pop(expression.getSignature().size()), true));
+        }
+
+        return this.peek().flatten();
+    }
+
+    // visit implementations
+
     // TODO: LibraryRef visit logic
     public List<DataRequirement> visit(LibraryRef libraryRef) {
         return null;
@@ -93,6 +117,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         return this.peek().flatten();
     }
 
+    // TODO: The right thing to do when encountering something that's not disjunctive normal form is to
+    // clear the code and date filters
     @Override
     public List<DataRequirement> visit(And and) {
         if (!this.isQueryContext()) {
@@ -108,7 +134,7 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             throw new IllegalStateException("queries not in disjunctive normal form");
         }
 
-        this.push(this.simpleMergeTwoOperands());
+        this.push(StackFrameOperations.simpleMerge(this.pop(), this.pop()));
         return this.peek().flatten();
     }
 
@@ -313,7 +339,7 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             }
         }
 
-        List<DataRequirement> wheres = this.applyWhere(sources, whereFrame.flatten());
+        List<DataRequirement> wheres = DataRequirementOperations.applyWhere(sources, whereFrame.flatten());
 
         this.push(StackFrame.of(wheres));
 
@@ -361,12 +387,14 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         return this.peek().flatten();
     }
 
+    // TODO: Use the precision of the operator to determine how constant values should be represented.
+    // We should most precision possible.
     public List<DataRequirement> visit(In in) throws Exception {
         if (!this.isQueryContext()) {
             return null;
         }
 
-        this.push(this.simpleMergeTwoOperands());
+        this.push(StackFrameOperations.simpleMerge(this.pop(), this.pop()));
         return this.peek().flatten();
     }
 
@@ -403,249 +431,1562 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             return null;
         }
 
-        this.push(this.simpleMergeTwoOperands());
+        this.push(StackFrameOperations.simpleMerge(this.pop(), this.pop()));
         return this.peek().flatten();
     }
 
-    // Dumb union for now.
-    // Needs to be smart enough to detect duplicate paths for code and date filters
-    // and merge
-    // appropriately
-    private DataRequirement union(DataRequirement left, DataRequirement right) {
-        Objects.requireNonNull(left, "left can not be null");
-        Objects.requireNonNull(right, "right can not be null");
-
-        if (left.getType() != null && right.getType() != null && !left.getType().equals(right.getType())) {
-            throw new IllegalArgumentException("if type is explicit left and right must be of same type");
-        }
-
-        if (right.hasType()) {
-            if (!left.hasType()) {
-                left.setType(right.getType());
-            }
-        }
-
-        if (right.hasCodeFilter()) {
-            for (DataRequirementCodeFilterComponent cfc : right.getCodeFilter()) {
-                left.addCodeFilter(cfc);
-            }
-        }
-
-        if (left.hasCodeFilter()) {
-            // Bind paths to constants
-            if (left.getCodeFilter().size() == 2) {
-                DataRequirementCodeFilterComponent one = left.getCodeFilter().get(0);
-                DataRequirementCodeFilterComponent two = left.getCodeFilter().get(1);
-
-                if (one.getPath() != null && two.getPath() == null) {
-                    if (!one.hasCode()) {
-                        one.addCode().setCode(two.getCodeFirstRep().getCode());
-                        left.getCodeFilter().remove(1);
-                    }
-                }
-
-                if (two.getPath() != null && one.getPath() == null) {
-                    if (!two.hasCode()) {
-                        two.addCode().setCode(one.getCodeFirstRep().getCode());
-                        left.getCodeFilter().remove(0);
-                    }
-                }
-            }
-        }
-
-        if (right.hasDateFilter()) {
-            for (DataRequirementDateFilterComponent dfc : right.getDateFilter()) {
-                left.addDateFilter(dfc);
-            }
-        }
-
-        if (left.hasCodeFilter()) {
-            // Bind date filter constants
-            if (left.getDateFilter().size() == 2) {
-                DataRequirementDateFilterComponent one = left.getDateFilter().get(0);
-                DataRequirementDateFilterComponent two = left.getDateFilter().get(1);
-
-                if (one.getPath() != null && two.getPath() == null) {
-                    if (!one.hasValue()) {
-                        one.setValue(two.getValue());
-                        left.getCodeFilter().remove(1);
-                    }
-                }
-
-                if (two.getPath() != null && one.getPath() == null) {
-                    if (!two.hasValue()) {
-                        two.setValue(one.getValue());
-                        left.getCodeFilter().remove(0);
-                    }
-                }
-            }
-        }
-
-        return left;
+    @Override
+     public List<DataRequirement> visit(Abs aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private List<DataRequirement> groupUnion(List<DataRequirement> dataRequirements) {
-        List<DataRequirement> mergedRequirements = new ArrayList<>();
-
-        Map<String, List<DataRequirement>> groupedRequirements = dataRequirements.stream()
-                .collect(groupingBy(DataRequirement::getType));
-
-        for (Entry<String, List<DataRequirement>> entry : groupedRequirements.entrySet()) {
-            DataRequirement mergedRequirement = this.union(entry.getValue());
-            mergedRequirements.add(mergedRequirement);
-        }
-
-        return mergedRequirements;
+    @Override
+     public List<DataRequirement> visit(Add aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private DataRequirement union(List<DataRequirement> dataRequirements) {
-        DataRequirement unioned = dataRequirements.get(0);
-
-        for (int i = 1; i < dataRequirements.size(); i++) {
-            DataRequirement next = dataRequirements.get(i);
-            if (!next.getType().equals(unioned.getType())) {
-                throw new IllegalArgumentException("attempted to union with dataRequirements of a different type");
-            }
-
-            unioned = union(unioned, next);
-        }
-
-        return unioned;
+    @Override
+     public List<DataRequirement> visit(After aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private void push(StackFrame stackFrame) {
-        this.stack.push(stackFrame);
+    @Override
+     public List<DataRequirement> visit(Aggregate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private StackFrame peek() {
-        return this.stack.peek();
+    @Override
+     public List<DataRequirement> visit(AggregateClause aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private StackFrame pop() {
-        return this.stack.pop();
+    @Override
+     public List<DataRequirement> visit(AliasRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private List<StackFrame> pop(int count) {
-        List<StackFrame> stackFrames = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            stackFrames.add(this.pop());
-        }
-
-        return stackFrames;
+    @Override
+     public List<DataRequirement> visit(AllTrue aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    public StackFrame mergeAnd(StackFrame left, StackFrame right) {
-        List<DataRequirement> requirements = left.flatten();
-        requirements.addAll(right.flatten());
-
-        requirements = groupUnion(requirements);
-
-        return StackFrame.of(requirements);
+    @Override
+     public List<DataRequirement> visit(AnyInCodeSystem aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    public StackFrame mergeOr(StackFrame left, StackFrame right) {
-        StackFrame stackFrame = new StackFrame();
-
-        stackFrame.addAll(left);
-        stackFrame.addAll(right);
-
-        return stackFrame;
+    @Override
+     public List<DataRequirement> visit(AnyInValueSet aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    private List<DataRequirement> applyWhere(List<DataRequirement> sources, List<DataRequirement> wheres) {
-        for (DataRequirement source : sources) {
-            String aliasName = source.getExtensionByUrl("alias").getValue().toString();
-
-            if (source.hasCodeFilter() && source.hasDateFilter()) {
-                throw new IllegalArgumentException("sources can't alias more than one property");
-            }
-
-            String pathPrepend = null;
-            if (source.hasCodeFilter()) {
-                pathPrepend = source.getCodeFilterFirstRep().getPath();
-            }
-
-            if (source.hasDateFilter()) {
-                pathPrepend = source.getDateFilterFirstRep().getPath();
-            }
-            // An alias can be:
-            // 1. The object directly
-            // 1. One codePath
-            // 1. One datePath
-            // A datePath can alter a codePath (e.g. Claim C -> C.item I -> I.date =
-            // Claim.item.date)
-            // But not the other way around (?)
-            // IOW, the where clause has the definitive type.
-            for (DataRequirement where : wheres) {
-                if (where.getType().equals(aliasName)) {
-                    source.getCodeFilter().clear();
-
-                    // Use the where to extend the source
-                    if (where.hasDateFilter()) {
-                        for (DataRequirementDateFilterComponent filter : where.getDateFilter()) {
-                            String combinedPath = (pathPrepend != null ? pathPrepend + "." : "")
-                                    + (filter.getPath() != null ? filter.getPath() : "");
-                            source.addDateFilter().setPath(combinedPath).setValue(filter.getValue());
-                        }
-                    }
-
-                    if (where.hasCodeFilter()) {
-                        for (DataRequirementCodeFilterComponent filter : where.getCodeFilter()) {
-                            String combinedPath = (pathPrepend != null ? pathPrepend + "." : "")
-                                    + (filter.getPath() != null ? filter.getPath() : "");
-                            source.addCodeFilter().setPath(combinedPath);
-                            if (filter.hasCode()) {
-                                source.getCodeFilterFirstRep().addCode().setCode(filter.getCodeFirstRep().getCode());
-
-                            }
-                            if (filter.hasValueSet()) {
-                                source.getCodeFilterFirstRep().setValueSet(filter.getValueSet());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        for (DataRequirement source : sources) {
-            source.removeExtension("alias");
-        }
-
-        return sources;
+    @Override
+     public List<DataRequirement> visit(AnyTrue aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
 
-    // This could be generalized to multiple operands...
-    private StackFrame simpleMergeTwoOperands() {
-        StackFrame left = this.pop();
-        StackFrame right = this.pop();
-
-        if (left.size() > 1 || right.size() > 1) {
-            throw new IllegalStateException("can't yet merge complex stack frames with multiple Ors");
-        }
-
-        DataRequirementMap lMap = left.isEmpty() ? null : left.getSingleOr();
-        DataRequirementMap rMap = right.isEmpty() ? null : right.getSingleOr();
-
-        if ((lMap != null && lMap.size() > 1) || (rMap != null && rMap.size() > 1)) {
-            throw new IllegalStateException("can't yet merge stack frames with multiple Types");
-        }
-
-        DataRequirement l = lMap != null ? lMap.getSingle() : null;
-        DataRequirement r = rMap != null ? rMap.getSingle() : null;
-
-        StackFrame merged;
-        if (l == null && r == null) {
-            merged = StackFrame.empty();
-        } else if (r == null) {
-            merged = StackFrame.of(l);
-        } else if (l == null) {
-            merged = StackFrame.of(r);
-        } else {
-            DataRequirement mergedReq = this.union(l, r);
-
-            merged = StackFrame.of(mergedReq);
-        }
-
-        return merged;
+    @Override
+     public List<DataRequirement> visit(As aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
     }
+
+    @Override
+     public List<DataRequirement> visit(Avg aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Before aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ByColumn aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ByDirection aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ByExpression aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CalculateAge aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CalculateAgeAt aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CanConvert aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CanConvertQuantity aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Case aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CaseItem aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Ceiling aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Children aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ChoiceTypeSpecifier aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Coalesce aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Code aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CodeDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CodeRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CodeSystemDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(CodeSystemRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Collapse aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Combine aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Concatenate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Concept aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConceptDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConceptRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Contains aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ContextDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Convert aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertQuantity aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToBoolean aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToDate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToDateTime aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToDecimal aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToInteger aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToLong aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToQuantity aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToRatio aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToString aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ConvertsToTime aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Count aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Current aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Date aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(DateFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(DateTime aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(DateTimeComponentFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Descendents aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(DifferenceBetween aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Distinct aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Divide aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(DurationBetween aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(End aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Ends aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(EndsWith aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Equivalent aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Except aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Exp aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Expand aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ExpressionRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Filter aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(First aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Flatten aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Floor aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ForEach aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(FunctionDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(GeometricMean aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Greater aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(GreaterOrEqual aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(HighBoundary aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IdentifierRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(If aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Implies aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(InCodeSystem aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IncludeDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IncludeElement aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IncludedIn aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(org.hl7.elm.r1.Includes aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IndexOf aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Indexer aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Instance aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(InstanceElement aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Intersect aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Interval aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IntervalTypeSpecifier aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Is aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IsFalse aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IsNull aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(IsTrue aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Iteration aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Last aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(LastPositionOf aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Length aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Less aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(LessOrEqual aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(LetClause aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.CodeSystems aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Codes aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Concepts aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Contexts aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Includes aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Parameters aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Statements aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.Usings aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Library.ValueSets aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(ListTypeSpecifier aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Ln aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Log aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(LowBoundary aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Lower aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Matches aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Max aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(MaxValue aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Median aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Meets aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(MeetsAfter aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(MeetsBefore aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Message aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Min aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(MinValue aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Mode aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Modulo aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Multiply aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(NamedTypeSpecifier aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Negate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Not aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(NotEqual aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Now aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Null aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(OperandDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(OperandRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Or aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Overlaps aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(OverlapsAfter aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(OverlapsBefore aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ParameterDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(PointFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(PopulationStdDev aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(PopulationVariance aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(PositionOf aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Power aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Precision aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Predecessor aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Product aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ProperContains aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ProperIn aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ProperIncludedIn aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ProperIncludes aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Quantity aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(QueryLetRef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Ratio aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Repeat aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ReplaceMatches aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ReturnClause aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Round aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SameAs aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SameOrAfter aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SameOrBefore aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SingletonFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Size aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Slice aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Sort aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SortClause aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Split aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SplitOnMatches aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Start aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Starts aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(StartsWith aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(StdDev aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Substring aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(SubsumedBy aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Subsumes aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Subtract aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Successor aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Sum aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Time aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TimeFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TimeOfDay aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Times aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TimezoneOffsetFrom aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToBoolean aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToChars aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToConcept aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToDate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToDateTime aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToDecimal aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToInteger aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToList aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToLong aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToQuantity aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToRatio aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToString aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ToTime aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Today aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Total aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Truncate aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TruncatedDivide aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Tuple aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TupleElement aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(TupleElementDefinition aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(TupleTypeSpecifier aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Union aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Upper aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(UsingDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(ValueSetDef aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Variance aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(VersionedIdentifier aBean)
+        throws Exception
+    {
+        return null;
+    }
+
+    @Override
+     public List<DataRequirement> visit(Width aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(With aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Without aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
+    @Override
+     public List<DataRequirement> visit(Xor aBean)
+        throws Exception
+    {
+        return this.defaultElementVisit(aBean);
+    }
+
 }

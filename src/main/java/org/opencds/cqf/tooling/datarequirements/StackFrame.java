@@ -1,7 +1,5 @@
 package org.opencds.cqf.tooling.datarequirements;
 
-import static org.junit.Assume.assumeNoException;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

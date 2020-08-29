@@ -16,12 +16,9 @@ public class StackFrameOperations {
     }
 
     public static StackFrame mergeOr(StackFrame left, StackFrame right) {
-        StackFrame stackFrame = new StackFrame();
+        left.addAll(right);
 
-        stackFrame.addAll(left);
-        stackFrame.addAll(right);
-
-        return stackFrame;
+        return left;
     }
 
     // This could be generalized to multiple operands...

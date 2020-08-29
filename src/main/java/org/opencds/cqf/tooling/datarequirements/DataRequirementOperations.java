@@ -179,5 +179,4 @@ public class DataRequirementOperations {
 
         return unioned;
     }
-    
 }

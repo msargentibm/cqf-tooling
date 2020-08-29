@@ -89,10 +89,16 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             return null;
         }
 
-        if (element instanceof OperatorExpression) {
-            OperatorExpression expression = (OperatorExpression)element;
+        if (element instanceof UnaryExpression) {
+            this.push(StackFrameOperations.mergeFrames(this.pop(1), true));
+        }
 
-            this.push(StackFrameOperations.mergeFrames(this.pop(expression.getSignature().size()), true));
+        if (element instanceof BinaryExpression) {
+            this.push(StackFrameOperations.mergeFrames(this.pop(2), true));
+        }
+
+        if (element instanceof TernaryExpression) {
+            this.push(StackFrameOperations.mergeFrames(this.pop(3), true));
         }
 
         return this.peek().flatten();

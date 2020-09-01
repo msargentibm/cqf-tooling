@@ -6,6 +6,7 @@ import org.cqframework.cql.cql2elm.model.LibraryRef;
 import org.cqframework.cql.elm.visiting.DepthFirstTraverserImpl;
 import org.cqframework.cql.elm.visiting.Visitor;
 import org.hl7.elm.r1.ExpressionDef;
+import org.hl7.elm.r1.FunctionRef;
 import org.hl7.elm.r1.Query;
 
 import java.util.Set;
@@ -43,5 +44,10 @@ public class DataRequirementsTraverser extends DepthFirstTraverserImpl<Exception
         }
 
         super.traverse(query, visitor);
+    }
+
+    @Override 
+    public void traverse(FunctionRef functionRef,  Visitor<?, Exception> visitor) throws Exception {
+       // Redirect to traversal of FunctionDef
     }
 }

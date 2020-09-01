@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hl7.fhir.r4.model.DataRequirement;
+import org.hl7.fhir.r4.model.Type;
 
 public class StackFrame extends ArrayList<DataRequirementMap> {
 
@@ -63,5 +64,13 @@ public class StackFrame extends ArrayList<DataRequirementMap> {
         }
 
         return this.get(0);
+    }
+
+    public String asConstantCode() {
+        return this.getSingleOr().getSingle().getCodeFilterFirstRep().getCodeFirstRep().getCode();
+    }
+
+    public Type asConstantDate() {
+        return this.getSingleOr().getSingle().getDateFilterFirstRep().getValue();
     }
 }

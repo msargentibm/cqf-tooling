@@ -30,12 +30,12 @@ Query Boundary
 (OR {
      DataRequirement {
        type: X
-       codefilters : ANDS
+       codeFilters : ANDS
        dateFilters ANDS
      },
      DataRequirement {
        type: Y
-       codefilters : !ANDS
+       codeFilters : !ANDS
 
      }
   },
@@ -214,7 +214,7 @@ define function "ClaimAndItemsForClaim"(C Claim):
       ci: i
     }
 
-// Hmm.. this would probably be some filter on the practioner .
+// Hmm.. this would probably be some filter on the practitioner .
 
 define function "HasValidNephrologistProvider"(c Claim, ct List<FHIR.Claim.CareTeam>):
   true

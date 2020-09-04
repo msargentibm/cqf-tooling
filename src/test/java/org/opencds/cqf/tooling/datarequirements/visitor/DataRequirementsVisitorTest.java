@@ -1,51 +1,39 @@
-package org.opencds.cqf.tooling.datarequirements;
+package org.opencds.cqf.tooling.datarequirements.visitor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.cqframework.cql.cql2elm.CqlTranslatorException;
 import org.cqframework.cql.cql2elm.CqlTranslatorOptions;
 import org.cqframework.cql.cql2elm.FhirLibrarySourceProvider;
 import org.cqframework.cql.cql2elm.LibraryManager;
 import org.cqframework.cql.cql2elm.ModelManager;
-import org.cqframework.cql.cql2elm.NamespaceManager;
 import org.cqframework.cql.cql2elm.model.TranslatedLibrary;
+import org.cqframework.cql.elm.visiting.DepthFirstTraverserImpl;
 import org.hl7.elm.r1.ExpressionDef;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.DataRequirement;
+import org.hl7.fhir.r4.model.Parameters;
 import org.junit.Test;
 import org.opencds.cqf.tooling.TestLibrarySourceProvider;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.parser.JsonParser;
+
 public class DataRequirementsVisitorTest {
-    private ModelManager modelManager;
-
-    protected ModelManager getModelManager() {
-        if (modelManager == null) {
-            modelManager = new ModelManager();
-        }
-
-        return modelManager;
-    }
-
-    private NamespaceManager namespaceManager;
-
-    protected NamespaceManager getNamespaceManager() {
-        if (namespaceManager == null) {
-            namespaceManager = new NamespaceManager();
-        }
-
-        return namespaceManager;
-    }
-
+    private static final ModelManager modelManager = new ModelManager();
     private LibraryManager libraryManager;
 
     protected LibraryManager getLibraryManager() {
         if (libraryManager == null) {
-            libraryManager = new LibraryManager(getModelManager());
+            libraryManager = new LibraryManager(modelManager);
             libraryManager.getNamespaceManager().addNamespace(
                 "org.opencds.cqf.tooling.datarequirements",
                 "/org/opencds/cqf/tooling/datarequirements");
@@ -76,12 +64,19 @@ public class DataRequirementsVisitorTest {
     }
 
     protected DataRequirementsVisitor getVisitorForLibrary(TranslatedLibrary library) {
-        return new DataRequirementsVisitor(library, getLibraryManager());
+        return getVisitorForLibrary(library, null);
+    }
+
+    protected DataRequirementsVisitor getVisitorForLibrary(TranslatedLibrary library, Map<String, Object> parameters) {
+        return new DataRequirementsVisitor(library, getLibraryManager(), parameters);
     }
 
     protected DataRequirementsTraversingVisitor getTraversingVisitorForLibrary(TranslatedLibrary library) {
-        DataRequirementsTraverser traverser = new DataRequirementsTraverser();
-        return new DataRequirementsTraversingVisitor(traverser, getVisitorForLibrary(library));
+        return getTraversingVisitorForLibrary(library, null);
+    }
+
+    protected DataRequirementsTraversingVisitor getTraversingVisitorForLibrary(TranslatedLibrary library, Map<String, Object> parameters) {
+        return new DataRequirementsTraversingVisitor(new DepthFirstTraverserImpl<>(), getVisitorForLibrary(library, parameters));
     }
 
     @Test
@@ -90,16 +85,16 @@ public class DataRequirementsVisitorTest {
         DataRequirementsVisitor visitor = this.getVisitorForLibrary(library);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "ESRD Observations");
 
-        List<DataRequirement> dataReqs = observations.getExpression().accept(visitor);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
-
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
             .setValueSet("http://fakeurl.com/ersd-diagnosis");
 
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        List<DataRequirement> actual = observations.getExpression().accept(visitor);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
+
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
     @Test
@@ -110,16 +105,16 @@ public class DataRequirementsVisitorTest {
 
         // The traversal is depth-first, meaning the children get visited first.
         observations.getExpression().accept(visitor);
-        List<DataRequirement> dataReqs = observations.accept(visitor);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        List<DataRequirement> actual = observations.accept(visitor);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
             .setValueSet("http://fakeurl.com/ersd-diagnosis");
 
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
     @Test
@@ -128,17 +123,17 @@ public class DataRequirementsVisitorTest {
         DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "ESRD Observations");
 
-        List<DataRequirement> dataReqs = traversingVisitor.visit(observations);
+        List<DataRequirement> actual = traversingVisitor.visit(observations);
 
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
             .setValueSet("http://fakeurl.com/ersd-diagnosis");
 
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
     @Test
@@ -147,16 +142,16 @@ public class DataRequirementsVisitorTest {
         DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "Observations");
 
-        List<DataRequirement> dataReqs = traversingVisitor.visit(observations);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        List<DataRequirement> actual = traversingVisitor.visit(observations);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("status")
             .addCode().setCode("final");
 
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
     @Test
@@ -165,16 +160,16 @@ public class DataRequirementsVisitorTest {
         DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "HospiceEncounterClaimsA");
 
-        List<DataRequirement> dataReqs = traversingVisitor.visit(observations);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        List<DataRequirement> actual = traversingVisitor.visit(observations);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Claim"));
         expected.addCodeFilter()
             .setPath("item.revenue")
             .setValueSet("http://fakeurl.com/hospice-encounter");
 
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
     @Test
@@ -183,27 +178,31 @@ public class DataRequirementsVisitorTest {
         DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "HospiceEncounterClaimsBUnboundDate");
 
-        List<DataRequirement> dataReqs = traversingVisitor.visit(observations);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        List<DataRequirement> actual = traversingVisitor.visit(observations);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Claim"));
         expected.addDateFilter().setPath("item.serviced.start");
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 
-    @Test
-    public void testDateSubqueryParameter() throws Exception {
+    // @Test
+    public void testDateSubqueryBoundParameter() throws Exception {
         TranslatedLibrary library = getLibrary("DataRequirements");
-        DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library);
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("Measurement Period", "Interval[@2019-01-01T00:00:00.0, @2020-01-01T00:00:00.0)");
+        
+        DataRequirementsTraversingVisitor traversingVisitor = getTraversingVisitorForLibrary(library, parameters);
         ExpressionDef observations = this.getExpressionFromLibrary(library, "HospiceEncounterClaimsBBoundDate");
 
-        List<DataRequirement> dataReqs = traversingVisitor.visit(observations);
-        assertNotNull(dataReqs);
-        assertEquals(1, dataReqs.size());
+        List<DataRequirement> actual = traversingVisitor.visit(observations);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
 
         DataRequirement expected = new DataRequirement(new CodeType("Claim"));
         expected.addDateFilter().setPath("item.serviced.start");
-        assertTrue(dataReqs.get(0).equalsDeep(expected));
+        assertTrue(actual.get(0).equalsDeep(expected));
     }
 }

@@ -118,9 +118,9 @@ public class DataRequirementsExtractor {
         return codeableConcept;
     }
 
-    private String toReference(CodeSystemDef codeSystemDef) {
-        return codeSystemDef.getId() + (codeSystemDef.getVersion() != null ? ("|" + codeSystemDef.getVersion()) : "");
-    }
+    // private String toReference(CodeSystemDef codeSystemDef) {
+    //     return codeSystemDef.getId() + (codeSystemDef.getVersion() != null ? ("|" + codeSystemDef.getVersion()) : "");
+    // }
 
     private String toReference(ValueSetDef valueSetDef) {
         return valueSetDef.getId() + (valueSetDef.getVersion() != null ? ("|" + valueSetDef.getVersion()) : "");

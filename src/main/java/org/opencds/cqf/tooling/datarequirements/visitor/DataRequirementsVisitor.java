@@ -1,4 +1,8 @@
-package org.opencds.cqf.tooling.datarequirements;
+package org.opencds.cqf.tooling.datarequirements.visitor;
+
+import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
+import static org.opencds.cqf.tooling.types.TypeParser.isTemporalType;
+import static org.opencds.cqf.tooling.types.TypeParser.parseTemporalType;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -6,34 +10,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Stack;
-import java.util.TimeZone;
-
-import javax.xml.bind.JAXBElement;
-
 import org.cqframework.cql.cql2elm.LibraryManager;
-import org.cqframework.cql.cql2elm.model.LibraryRef;
 import org.cqframework.cql.cql2elm.model.TranslatedLibrary;
 import org.cqframework.cql.elm.visiting.BaseVisitor;
-import org.cqframework.cql.elm.visiting.Visitable;
 import org.hl7.elm.r1.*;
-import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.DecimalType;
-import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent;
 import org.hl7.fhir.r4.model.DataRequirement.DataRequirementDateFilterComponent;
-import org.opencds.cqf.tooling.cqltypes.CqlTypeParser;
+import org.opencds.cqf.tooling.datarequirements.DataRequirementOperations;
+import org.opencds.cqf.tooling.datarequirements.DataRequirementsExtractor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.StringType;
 
 import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
-import info.bliki.wiki.tags.code.ABAPCodeFilter;
-
-import org.hl7.fhir.r4.model.StringType;
-import org.hl7.fhir.r4.model.Type;
 
 public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, Exception> {
+
+    private static Logger logger = LoggerFactory.getLogger(DataRequirementsVisitor.class);
 
     public DataRequirementsVisitor(TranslatedLibrary library, LibraryManager libraryManager) {
         this(library, libraryManager, null);
@@ -53,64 +49,16 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
     private Map<String, Object> parameters;
 
-    private Map<String, StackFrame> expressionDataRequirementsCache = new HashMap<>();
+    private Map<String, DataFrame> expressionDataRequirementsCache = new HashMap<>();
 
-    // Frames
-
-    // Each node in a query has a set of Ors
-    // Each Or has a set of Types
-    // Each Type has a set of Filters (Ands)
-    private Stack<StackFrame> stack = new Stack<>();
-
-    protected void push(StackFrame stackFrame) {
-        this.stack.push(stackFrame);
-    }
-
-    protected StackFrame peek() {
-        return this.stack.peek();
-    }
-
-    protected StackFrame pop() {
-        return this.stack.pop();
-    }
-
-    protected List<StackFrame> pop(int count) {
-        List<StackFrame> stackFrames = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            stackFrames.add(this.pop());
-        }
-
-        return stackFrames;
-    }
-
-    // Query levels
-
-    private int querylevel = 0;
+    private DataRequirementVisitorContext context = new DataRequirementVisitorContext();
 
     public void enterQueryContext() {
-        querylevel++;
+        this.context.enterQueryContext();
     }
 
     public void exitQueryContext() {
-        querylevel--;
-
-        if (querylevel < 0) {
-            throw new IllegalStateException("can't have negative query context levels");
-        }
-    }
-
-    public Boolean isQueryContext() {
-        return querylevel > 0;
-    }
-
-    protected <T> T coalesce(T... elements) {
-        for (T element : elements) {
-            if (element != null) {
-                return element;
-            }
-        }
-
-        return null;
+        this.context.exitQueryContext();
     }
 
     // Visit implementations
@@ -121,16 +69,16 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
     // protected void popAnnotations(Element element) {
     //     // TODO: None of
     //     if (element.getResultTypeSpecifier()!= null) {
-    //         //this.pop();
+    //         //this.context.pop();
     //     }
 
     //     for (Object bean: element.getAnnotation()) {
     //         if (bean instanceof Visitable) {
-    //             //this.pop();
+    //             //this.context.pop();
     //         } else {
     //             if (bean instanceof JAXBElement<?> ) {
     //                 if (((JAXBElement<?> ) bean).getValue() instanceof Visitable) {
-    //                     //this.pop();
+    //                     //this.context.pop();
     //                 }
     //             }
     //         }
@@ -139,31 +87,33 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
     //     if (element instanceof OperatorExpression) {
     //         OperatorExpression opExp = (OperatorExpression)element;
     //         if (opExp.getSignature() != null) {
-    //             //this.pop(opExp.getSignature().size());
+    //             //this.context.pop(opExp.getSignature().size());
     //         }
     //     }
     // }
 
     protected List<DataRequirement> defaultElementVisit(Element element) {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
+
+        // return null;
 
         // this.popAnnotations(element);
 
         if (element instanceof UnaryExpression) {
-            this.push(StackFrameOperations.mergeFrames(this.pop(1), true));
+            this.context.push(DataFrameOperations.mergeFrames(this.context.pop(1), true));
         }
 
         if (element instanceof BinaryExpression) {
-            this.push(StackFrameOperations.mergeFrames(this.pop(2), true));
+            this.context.push(DataFrameOperations.mergeFrames(this.context.pop(2), true));
         }
 
         if (element instanceof TernaryExpression) {
-            this.push(StackFrameOperations.mergeFrames(this.pop(3), true));
+            this.context.push(DataFrameOperations.mergeFrames(this.context.pop(3), true));
         }
 
-        return this.peek().flatten();
+        return null;
     }
 
     // Non-org.hl7.elm.r1.Elements
@@ -238,14 +188,14 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         if (!expressionDataRequirementsCache.containsKey(expressionDef.getName())) {
             // All the data reqs should be fully resolved at this point
             // because an expressionDef can only have one expression.
-            if (this.stack.size() > 1) {
+            if (this.context.size() > 1) {
                 throw new IllegalStateException("data requirements for expression %s were not fully resolved");
             }
 
-            this.expressionDataRequirementsCache.put(expressionDef.getName(), this.pop());
+            this.expressionDataRequirementsCache.put(expressionDef.getName(), this.context.pop());
         }
 
-        if (!this.stack.empty()) {
+        if (!this.context.empty()) {
             throw new IllegalStateException(
                     String.format("children of expression %s were visited more than once.", expressionDef.getName()));
         }
@@ -262,8 +212,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
     public List<DataRequirement> visit(Retrieve retrieve) {
         DataRequirement dataReq = this.dataRequirementsExtractor.toDataRequirement(retrieve, this.library,
                 this.libraryManager);
-        this.push(StackFrame.of(dataReq));
-        return this.peek().flatten();
+        this.context.push(DataFrame.of(dataReq));
+        return this.context.peek().flatten();
     }
 
     // TODO: The right thing to do when encountering something that's not
@@ -272,49 +222,52 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
     @Override
     public List<DataRequirement> visit(And and) {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
-        StackFrame right = this.peek();
-        StackFrame left = this.peek();
+        DataFrame right = this.context.peek();
+        DataFrame left = this.context.peek();
+
+        DataFrame merged = DataFrameOperations.simpleMerge(left, right);
 
         // Detect lack of disjunctive normal form
         // (an OR inside an AND)
         if (left.size() > 1 || right.size() > 1) {
-            throw new IllegalStateException("queries not in disjunctive normal form");
+            logger.warn("non-disjunctive normal form detected. code paths will be cleared.");
+            merged = DataFrameOperations.clearCodeValues(merged);
         }
 
-        this.push(StackFrameOperations.simpleMerge(this.pop(), this.pop()));
-        return this.peek().flatten();
+        this.context.push(merged);
+        return null;
     }
 
     @Override
     public List<DataRequirement> visit(InValueSet inValueSet) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
-        StackFrame valueSet = this.pop();
-        StackFrame code = this.pop();
+        DataFrame valueSet = this.context.pop();
+        DataFrame code = this.context.pop();
 
-        if ((!valueSet.hasSingleOr() || !code.hasSingleOr())
-                || (!valueSet.getSingleOr().hasSingleRequirement() || !code.getSingleOr().hasSingleRequirement())) {
+        if ((!valueSet.isSingleOr() || !code.isSingleOr())
+                || (!valueSet.asSingleOr().isSingle() || !code.asSingleOr().isSingle())) {
             throw new IllegalArgumentException("InValueSet requires exactly one code path and one valueset");
         }
 
-        DataRequirement codeReq = code.getSingleOr().getSingle();
-        DataRequirement valueReq = valueSet.getSingleOr().getSingle();
+        DataRequirement codeReq = code.asSingleOr().asSingle();
+        DataRequirement valueReq = valueSet.asSingleOr().asSingle();
 
         codeReq.getCodeFilterFirstRep().setValueSet(valueReq.getCodeFilterFirstRep().getValueSet());
 
-        this.push(StackFrame.of(codeReq));
-        return this.peek().flatten();
+        this.context.push(DataFrame.of(codeReq));
+        return null;
     }
 
     @Override
     public List<DataRequirement> visit(ValueSetRef ref) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
@@ -323,70 +276,54 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         DataRequirement dr = new DataRequirement();
         dr.addCodeFilter().setValueSet(def.getId());
 
-        this.push(StackFrame.of(dr));
+        this.context.push(DataFrame.of(dr));
 
-        return this.peek().flatten();
+        return null;
     }
 
     @Override
     public List<DataRequirement> visit(Literal literal) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
         DataRequirement dataReq = new DataRequirement();
 
-        // Need to ensure that ELM always has type information.
-        String localName = literal.getValueType().getLocalPart();
-        // Object value = CqlTypeParser.parse(localName, literal.getValue());
+        String resultType = literal.getResultType().toString();
+        if(isTemporalType(resultType)) {
+            org.hl7.fhir.r4.model.Type value = parseTemporalType(resultType, literal.getValue());
+            dataReq.addDateFilter().setValue(value)
+            .addExtension("type", new StringType(resultType));
+        }
+        else {
+            dataReq.addCodeFilter().addCode().setCode(literal.getValue())
+            .addExtension("type", new StringType(resultType));
+        }
 
-        // Type literalType;
-        // switch (localName) {
-        //     case "Boolean":
-        //         literalType = new BooleanType(literal.getValue());
-        //         break;
-        //     case "Integer":
-        //         literalType = new IntegerType(literal.getValue());
-        //         break;
-        //     case "Decimal":
-        //         literalType = new DecimalType(literal.getValue());
-        //         break;
-        //     case "String":
-        //         literalType = new StringType(literal.getValue());
-        //         break;
-        //     default:
-        //         throw new IllegalArgumentException(
-        //                 String.format("Cannot construct literal value for type '%s'.", localName));
-        // }
 
-        // Huh. Guess we can't set those codes.. So... Let's add an extension to say that these
-        // are literal values.
 
-        dataReq.addCodeFilter().addCode().setCode(literal.getValue())
-            .addExtension("type", new StringType(localName));
+        this.context.push(DataFrame.of(dataReq));
 
-        this.push(StackFrame.of(dataReq));
-
-        return this.peek().flatten();
+        return null;
     }
 
     @Override
     public List<DataRequirement> visit(Property property) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
         DataRequirement dataReq = new DataRequirement(new CodeType(property.getScope()));
-        String localName = property.getResultType().toString();
-        if (localName.toLowerCase().contains("date") || localName.toLowerCase().contains("period")
-                || localName.toLowerCase().contains("duration") || localName.toLowerCase().contains("time")) {
-            dataReq.addDateFilter().setPath(property.getPath());
-        } else {
-            dataReq.addCodeFilter().setPath(property.getPath());
+        String typeName = property.getResultType().toString();
+        if (isTemporalType(typeName)) {
+            dataReq.addDateFilter().setPath(property.getPath()).addExtension("type", new StringType(typeName));
+        }
+        else {
+            dataReq.addCodeFilter().setPath(property.getPath()).addExtension("type", new StringType(typeName));
         }
 
         if (property.getSource() != null) {
-            StackFrame sourceFrame = this.pop();
+            DataFrame sourceFrame = this.context.pop();
             if (sourceFrame.size() > 0) {
 
                 if (sourceFrame.size() > 1 || sourceFrame.get(0).size() != 1) {
@@ -394,7 +331,7 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
                 }
 
                 // TODO: This is shared "merge-path logic" with alias resolution
-                DataRequirement inner = sourceFrame.getSingleOr().getSingle();
+                DataRequirement inner = sourceFrame.asSingleOr().asSingle();
 
                 dataReq.setType(inner.getType());
 
@@ -406,6 +343,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
                 if (inner.hasDateFilter()) {
                     pathPrepend = inner.getDateFilterFirstRep().getPath();
                 }
+
+
 
                 if (pathPrepend != null) {
                     if (dataReq.hasCodeFilter()) {
@@ -427,9 +366,9 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             }
         }
 
-        this.push(StackFrame.of(dataReq));
+        this.context.push(DataFrame.of(dataReq));
 
-        return this.peek().flatten();
+        return null;
     }
 
     @Override
@@ -441,30 +380,30 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         // Re-enable these as they are visited
 
         // if (query.getSort()!= null) {
-        // dataReqs.addAll(this.stack.pop().flatten());
+        // dataReqs.addAll(this.context.pop().flatten());
         // }
 
         // if (query.getAggregate()!= null) {
-        // dataReqs.addAll(this.stack.pop().flatten());
+        // dataReqs.addAll(this.context.pop().flatten());
         // }
 
         // if (query.getReturn()!= null) {
-        // dataReqs.addAll(this.stack.pop().flatten());
+        // dataReqs.addAll(this.context.pop().flatten());
         // }
 
-        StackFrame whereFrame = null;
+        DataFrame whereFrame = null;
         if (query.getWhere() != null) {
-            whereFrame = this.stack.pop();
+            whereFrame = this.context.pop();
         }
 
         // if (query.getRelationship() != null) {
         // List<List<DataRequirement>> relReqs =
-        // this.pop(query.getRelationship().size());
+        // this.context.pop(query.getRelationship().size());
         // relReqs.forEach(x -> dataReqs.addAll(x));
         // }
 
         // if (query.getLet() != null) {
-        // List<List<DataRequirement>> letReqs = this.pop(query.getLet().size());
+        // List<List<DataRequirement>> letReqs = this.context.pop(query.getLet().size());
         // letReqs.forEach(x -> dataReqs.addAll(x));
         // }
 
@@ -472,25 +411,21 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
         List<DataRequirement> sources = new ArrayList<>();
         if (query.getSource() != null) {
-            List<StackFrame> sourceFrames = this.pop(query.getSource().size());
+            List<DataFrame> sourceFrames = this.context.pop(query.getSource().size());
 
-            for (StackFrame frame : sourceFrames) {
+            for (DataFrame frame : sourceFrames) {
                 sources.addAll(frame.flatten());
             }
         }
 
         List<DataRequirement> wheres = DataRequirementOperations.applyWhere(sources, whereFrame.flatten());
-
-        this.push(StackFrame.of(wheres));
-
-        this.exitQueryContext();
-
-        return this.peek().flatten();
+        this.context.push(DataFrame.of(wheres));
+        return null;
     }
 
     @Override
     public List<DataRequirement> visit(AliasedQuerySource aliasedQuerySource) throws Exception {
-        StackFrame source = this.peek();
+        DataFrame source = this.context.peek();
 
         if (source.size() > 1) {
             throw new IllegalStateException("query source can not have Ors");
@@ -502,45 +437,45 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             throw new IllegalStateException("query source can not multiple types of data requirements");
         }
 
-        requirements.getSingle().addExtension("alias", new StringType(aliasedQuerySource.getAlias()));
+        requirements.asSingle().addExtension("alias", new StringType(aliasedQuerySource.getAlias()));
 
-        return source.flatten();
+        return null;
     }
 
     // Don't trace functions for now...
     // The traverser will have to be smart enough to resolve and visit those
     @Override
     public List<DataRequirement> visit(FunctionRef functionRef) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
-        List<StackFrame> frames = this.pop(functionRef.getOperand().size());
+        List<DataFrame> frames = this.context.pop(functionRef.getOperand().size());
 
         List<DataRequirement> requirements = new ArrayList<>();
 
-        for (StackFrame frame : frames) {
+        for (DataFrame frame : frames) {
             requirements.addAll(frame.flatten());
         }
 
-        this.push(StackFrame.of(requirements));
-        return this.peek().flatten();
+        this.context.push(DataFrame.of(requirements));
+        return null;
     }
 
     // TODO: Use the precision of the operator to determine how constant values
     // should be represented.
     // We should most precision possible.
     public List<DataRequirement> visit(In in) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
-        this.push(StackFrameOperations.simpleMerge(this.pop(), this.pop()));
-        return this.peek().flatten();
+        this.context.push(DataFrameOperations.simpleMerge(this.context.pop(), this.context.pop()));
+        return null;
     }
 
     public List<DataRequirement> visit(ParameterRef parameterRef) throws Exception {
-        if (!this.isQueryContext()) {
+        if (!this.context.isQueryContext()) {
             return null;
         }
 
@@ -551,29 +486,173 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         // the defaults if any should have been resolved.
         if (parameterDef == null || parameterDef.getName() == null
                 || !this.parameters.containsKey(parameterDef.getName())) {
-            this.push(StackFrame.empty());
-            return this.peek().flatten();
+            this.context.push(DataFrame.empty());
+            return null;
         }
         else {
             Object parameter = this.parameters.get(parameterDef.getName());
             DataRequirement dataReq = new DataRequirement();
-            String localName = parameterDef.getParameterType().getLocalPart();
+            String localName = parameterDef.getResultType().toString();
             dataReq.addCodeFilter().addCode()
             .setCode(parameter.toString()).addExtension("type", new StringType(localName));
     
-            this.push(StackFrame.of(dataReq));
+            this.context.push(DataFrame.of(dataReq));
     
-            return this.peek().flatten();
+            return null;
         }
     }
 
-    public List<DataRequirement> visit(Equal equal) throws Exception {
-        return this.defaultElementVisit(equal);
+
+    @Override
+    public List<DataRequirement> visit(Date aBean) throws Exception {
+        if(!this.context.isQueryContext()) {
+            return null;
+        }
+
+        //this.popAnnotations(aBean);
+
+        TemporalPrecisionEnum precision = null;
+
+        int day = 0;
+        if (aBean.getDay()!= null) {
+            day = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            // aBean.getDay().accept(aVisitor);
+            precision = firstNonNull(precision, TemporalPrecisionEnum.DAY);
+        }
+
+        int month = 0;
+        if (aBean.getMonth()!= null) {
+            month = Integer.parseInt(
+                this.context.pop().asSingleOr().asConstantCode().getValue());
+                precision = firstNonNull(precision, TemporalPrecisionEnum.MONTH);
+        }
+
+        int year = 0;
+        if (aBean.getYear()!= null) {
+            year = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            if (precision == null){
+                precision = firstNonNull(precision, TemporalPrecisionEnum.YEAR);
+            }
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(year, month, day);
+
+        DateTimeType dateTime = new DateTimeType(calendar.getTime(), precision);
+
+
+        DataRequirement dataReq = new DataRequirement();
+        dataReq.addCodeFilter().addCode().setCode(dateTime.asStringValue());
+        dataReq.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("datetime"));
+        
+        this.context.push(DataFrame.of(dataReq));
+        
+        return null;
     }
 
     @Override
+    public List<DataRequirement> visit(DateTime aBean) throws Exception {
+        if(!this.context.isQueryContext()) {
+            return null;
+        }
+
+        //this.popAnnotations(aBean);
+
+        TemporalPrecisionEnum precision = null;
+
+        // TODO: offset...
+        // int offset = 0;
+        if (aBean.getTimezoneOffset()!= null) {
+            this.context.pop();
+        }
+
+        int milli = 0;
+        if (aBean.getMillisecond()!= null) {
+            milli = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            // aBean.getDay().accept(aVisitor);
+            precision = firstNonNull(precision, TemporalPrecisionEnum.MILLI);
+        }
+
+        int second = 0;
+        if (aBean.getSecond()!= null) {
+            second = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            precision = firstNonNull(precision, TemporalPrecisionEnum.SECOND);
+        }
+
+        int minute =0;
+        if (aBean.getMinute()!= null) {
+            minute = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            precision = firstNonNull(precision, TemporalPrecisionEnum.MINUTE);
+        }
+
+        int hour = 0;
+        if (aBean.getHour()!= null) {
+            minute = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            precision = firstNonNull(precision, TemporalPrecisionEnum.MINUTE);
+        }
+
+        int day = 0;
+        if (aBean.getDay()!= null) {
+            day = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            precision = firstNonNull(precision, TemporalPrecisionEnum.DAY);
+        }
+
+        int month = 0;
+        if (aBean.getMonth()!= null) {
+            month = Integer.parseInt(
+                this.context.pop().asSingleOr().asConstantCode().getValue());
+                precision = firstNonNull(precision, TemporalPrecisionEnum.MONTH);
+        }
+
+        int year = 0;
+        if (aBean.getYear()!= null) {
+            year = Integer.parseInt(this.context.pop().asSingleOr().asConstantCode().getValue());
+            if (precision == null){
+                precision = firstNonNull(precision, TemporalPrecisionEnum.YEAR);
+            }
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(year, month, day, hour, minute, second);
+        calendar.set(Calendar.MILLISECOND, milli);
+
+        DateTimeType dateTime = new DateTimeType(calendar.getTime(), precision);
+        
+        DataRequirement dataReq = new DataRequirement();
+        dataReq.addCodeFilter().addCode().setCode(dateTime.asStringValue());
+        dataReq.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("datetime"));
+
+        this.context.push(DataFrame.of(dataReq));
+        return null;
+    }
+
+    @Override
+    public List<DataRequirement> visit(ParameterDef aBean) throws Exception {
+        // this.popAnnotations(aBean);
+
+        if (aBean.getParameterTypeSpecifier()!= null) {
+            // this.context.pop();
+        }
+
+        if (aBean.getDefault()!= null) {  
+            if (!this.parameters.containsKey(aBean.getName())) {
+                this.parameters.put(aBean.getName(), this.context.pop().asSingleOr().asConstantCode());
+            } 
+        };
+
+        return null;
+    }
+
+
+    public List<DataRequirement> visit(Equal equal) throws Exception {
+        this.context.push(DataFrameOperations.mergeFrames(this.context.pop(2), false));
+        return null;
+    }
+
+    @Override
+    // Does not impact data requirements
     public List<DataRequirement> visit(Exists exists) throws Exception {
-        return this.defaultElementVisit(exists);
+        return null;
     }
 
     @Override
@@ -842,137 +921,9 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
     }
 
     @Override
-    public List<DataRequirement> visit(Date aBean) throws Exception {
-        if(!this.isQueryContext()) {
-            return null;
-        }
-
-        //this.popAnnotations(aBean);
-
-        TemporalPrecisionEnum precision = null;
-
-        int day = 0;
-        if (aBean.getDay()!= null) {
-            day = Integer.parseInt(this.pop().asConstantCode());
-            // aBean.getDay().accept(aVisitor);
-            precision = this.coalesce(precision, TemporalPrecisionEnum.DAY);
-        }
-
-        int month = 0;
-        if (aBean.getMonth()!= null) {
-            month = Integer.parseInt(
-                this.pop().asConstantCode());
-                precision = this.coalesce(precision, TemporalPrecisionEnum.MONTH);
-        }
-
-        int year = 0;
-        if (aBean.getYear()!= null) {
-            year = Integer.parseInt(this.pop().asConstantCode());
-            if (precision == null){
-                precision = this.coalesce(precision, TemporalPrecisionEnum.YEAR);
-            }
-        }
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month, day);
-
-        DateTimeType dateTime = new DateTimeType(calendar.getTime(), precision);
-
-
-        DataRequirement dataReq = new DataRequirement();
-        dataReq.addDateFilter().setValue(dateTime);
-
-        this.push(StackFrame.of(dataReq));
-        return this.peek().flatten();
-    }
-
-    @Override
     public List<DataRequirement> visit(DateFrom aBean) throws Exception {
-        return this.defaultElementVisit(aBean);
-    }
-
-    @Override
-    public List<DataRequirement> visit(DateTime aBean) throws Exception {
-        if(!this.isQueryContext()) {
-            return null;
-        }
-
-        //this.popAnnotations(aBean);
-
-        TemporalPrecisionEnum precision = null;
-
-        // TODO: offset...
-        int offset = 0;
-        if (aBean.getTimezoneOffset()!= null) {
-            this.pop();
-        }
-
-        int milli = 0;
-        if (aBean.getMillisecond()!= null) {
-            milli = Integer.parseInt(this.pop().asConstantCode());
-            // aBean.getDay().accept(aVisitor);
-            precision = this.coalesce(precision, TemporalPrecisionEnum.MILLI);
-        }
-
-        int second = 0;
-        if (aBean.getSecond()!= null) {
-            second = Integer.parseInt(this.pop().asConstantCode());
-            precision = this.coalesce(precision, TemporalPrecisionEnum.SECOND);
-        }
-
-        int minute =0;
-        if (aBean.getMinute()!= null) {
-            minute = Integer.parseInt(this.pop().asConstantCode());
-            precision = this.coalesce(precision, TemporalPrecisionEnum.MINUTE);
-        }
-
-        int hour = 0;
-        if (aBean.getHour()!= null) {
-            minute = Integer.parseInt(this.pop().asConstantCode());
-            precision = this.coalesce(precision, TemporalPrecisionEnum.MINUTE);
-        }
-
-        int day = 0;
-        if (aBean.getDay()!= null) {
-            day = Integer.parseInt(this.pop().asConstantCode());
-            precision = this.coalesce(precision, TemporalPrecisionEnum.DAY);
-        }
-
-        int month = 0;
-        if (aBean.getMonth()!= null) {
-            month = Integer.parseInt(
-                this.pop().asConstantCode());
-                precision = this.coalesce(precision, TemporalPrecisionEnum.MONTH);
-        }
-
-        int year = 0;
-        if (aBean.getYear()!= null) {
-            year = Integer.parseInt(this.pop().asConstantCode());
-            if (precision == null){
-                precision = this.coalesce(precision, TemporalPrecisionEnum.YEAR);
-            }
-        }
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month, day, hour, minute, second);
-        calendar.set(Calendar.MILLISECOND, milli);
-
-        DateTimeType dateTime = new DateTimeType(calendar.getTime(), precision);
-
-
-        DataRequirement dataReq = new DataRequirement();
-        dataReq.addDateFilter().setValue(dateTime);
-
-        this.push(StackFrame.of(dataReq));
-        return this.peek().flatten();
-
-
-
-
-
-
-
-
+        return null;
+        //return this.defaultElementVisit(aBean);
     }
 
     @Override
@@ -1376,23 +1327,6 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
     }
 
     @Override
-    public List<DataRequirement> visit(ParameterDef aBean) throws Exception {
-        // this.popAnnotations(aBean);
-
-        if (aBean.getParameterTypeSpecifier()!= null) {
-            // this.pop();
-        }
-
-        if (aBean.getDefault()!= null) {  
-            if (!this.parameters.containsKey(aBean.getName())) {
-                this.parameters.put(aBean.getName(), this.pop().asConstantCode());
-            } 
-        };
-
-        return null;
-    }
-
-    @Override
     public List<DataRequirement> visit(PointFrom aBean) throws Exception {
         return this.defaultElementVisit(aBean);
     }
@@ -1634,7 +1568,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
     @Override
     public List<DataRequirement> visit(ToDateTime aBean) throws Exception {
-        return this.defaultElementVisit(aBean);
+        return null;
+        // return this.defaultElementVisit(aBean);
     }
 
     @Override

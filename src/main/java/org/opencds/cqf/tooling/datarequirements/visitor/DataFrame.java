@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.hl7.fhir.r4.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DataRequirement;
 
 public class DataFrame extends ArrayList<DataRequirementMap> {
     private static final long serialVersionUID = 1L;

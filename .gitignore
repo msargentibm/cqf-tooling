@@ -136,3 +136,5 @@ core.*
 heapdump.*
 javacore.*
 Snap.*
+
+output

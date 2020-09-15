@@ -2,8 +2,8 @@ package org.opencds.cqf.tooling.types;
 
 import java.math.BigDecimal;
 
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.Type;
+import org.hl7.fhir.dstu3.model.DateTimeType;
+import org.hl7.fhir.dstu3.model.Type;
 
 public class TypeParser {
 

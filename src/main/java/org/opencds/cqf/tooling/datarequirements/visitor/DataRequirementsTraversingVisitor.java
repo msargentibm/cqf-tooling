@@ -5,7 +5,7 @@ import java.util.List;
 import org.cqframework.cql.elm.visiting.DepthFirstTraverserImpl;
 import org.cqframework.cql.elm.visiting.TraversingVisitor;
 import org.hl7.elm.r1.Query;
-import org.hl7.fhir.r4.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DataRequirement;
 
 public class DataRequirementsTraversingVisitor extends TraversingVisitor<List<DataRequirement>, Exception> {
 

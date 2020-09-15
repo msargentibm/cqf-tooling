@@ -9,6 +9,7 @@ import org.opencds.cqf.tooling.measure.stu3.RefreshStu3Measure;
 import org.opencds.cqf.tooling.modelinfo.StructureDefinitionToModelInfo;
 import org.opencds.cqf.tooling.operation.BundleResources;
 import org.opencds.cqf.tooling.operation.ExecuteMeasureTestOperation;
+import org.opencds.cqf.tooling.operation.DataRequirementsOperation;
 import org.opencds.cqf.tooling.operation.IgBundler;
 import org.opencds.cqf.tooling.operation.PostBundlesInDirOperation;
 import org.opencds.cqf.tooling.operation.RefreshIGOperation;
@@ -82,6 +83,8 @@ class OperationFactory {
                 return new RCKMSJurisdictionsGenerator();
             case "ExecuteMeasureTest":
                 return new ExecuteMeasureTestOperation();
+            case "DataRequirements":
+                return new DataRequirementsOperation();
             default:
                 throw new IllegalArgumentException("Invalid operation: " + operationName);
         }

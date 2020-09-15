@@ -3,11 +3,11 @@ package org.opencds.cqf.tooling.datarequirements;
 import static org.junit.Assert.assertTrue;
 import static org.opencds.cqf.tooling.datarequirements.DataRequirementOperations.convertCodeFilters;
 
-import org.hl7.fhir.r4.model.CodeType;
-import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.StringType;
-import org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent;
+import org.hl7.fhir.dstu3.model.CodeType;
+import org.hl7.fhir.dstu3.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DateTimeType;
+import org.hl7.fhir.dstu3.model.StringType;
+import org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent;
 import org.junit.Test;
 
 public class DataRequirementOperationsTest {
@@ -44,7 +44,7 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("patient").addExtension("type", new StringType("Patient"));
-        initial.getCodeFilterFirstRep().addCode().setCode("24");
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("24");
 
         convertCodeFilters(initial);
     }
@@ -54,7 +54,7 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("patient").addExtension("type", new StringType("Patient"));
-        initial.getCodeFilterFirstRep().addCode().setCode("24");
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("24");
 
         convertCodeFilters(initial);
     }
@@ -73,8 +73,8 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("patient").addExtension("type", new StringType("Patient"));
-        initial.getCodeFilterFirstRep().addCode().setCode("24");
-        initial.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("integer"));
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("24");
+        initial.getCodeFilterFirstRep().getValueCodingFirstRep().addExtension("type", new StringType("integer"));
 
         DataRequirement expected = initial.copy();
 
@@ -88,8 +88,8 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("period").addExtension("type", new StringType("date"));
-        initial.getCodeFilterFirstRep().addCode().setCode("2018-01-01");
-        initial.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("integer"));
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("2018-01-01");
+        initial.getCodeFilterFirstRep().getValueCodingFirstRep().addExtension("type", new StringType("integer"));
 
         DataRequirement expected = initial.copy();
 
@@ -103,8 +103,8 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("period").addExtension("type", new StringType("date"));
-        initial.getCodeFilterFirstRep().addCode().setCode("2018-01-01");
-        initial.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("date"));
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("2018-01-01");
+        initial.getCodeFilterFirstRep().getValueCodingFirstRep().addExtension("type", new StringType("date"));
 
         DataRequirement expected = new DataRequirement();
         expected.addDateFilter().setPath("period").addExtension("type", new StringType("date"));
@@ -120,20 +120,20 @@ public class DataRequirementOperationsTest {
 
         DataRequirement initial = new DataRequirement();
         initial.addCodeFilter().setPath("period").addExtension("type", new StringType("date"));
-        initial.getCodeFilterFirstRep().addCode().setCode("2018-01-01");
-        initial.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("date"));
+        initial.getCodeFilterFirstRep().addValueCoding().setCode("2018-01-01");
+        initial.getCodeFilterFirstRep().getValueCodingFirstRep().addExtension("type", new StringType("date"));
 
         initial.addCodeFilter().setPath("patient").addExtension("type", new StringType("integer"));
-        initial.getCodeFilter().get(1).addCode().setCode("25");
-        initial.getCodeFilter().get(1).getCodeFirstRep().addExtension("type", new StringType("integer"));
+        initial.getCodeFilter().get(1).addValueCoding().setCode("25");
+        initial.getCodeFilter().get(1).getValueCodingFirstRep().addExtension("type", new StringType("integer"));
 
         DataRequirement expected = new DataRequirement();
         expected.addDateFilter().setPath("period").addExtension("type", new StringType("date"));
         expected.getDateFilterFirstRep().setValue(new DateTimeType("2018-01-01"));
 
         expected.addCodeFilter().setPath("patient").addExtension("type", new StringType("integer"));
-        expected.getCodeFilterFirstRep().addCode().setCode("25");
-        expected.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("integer"));
+        expected.getCodeFilterFirstRep().addValueCoding().setCode("25");
+        expected.getCodeFilterFirstRep().getValueCodingFirstRep().addExtension("type", new StringType("integer"));
 
         DataRequirement actual = convertCodeFilters(initial);
 

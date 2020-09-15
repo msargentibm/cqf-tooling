@@ -67,6 +67,7 @@ public class RefreshIGArgumentProcessor {
         return parser;
     }
 
+    @SuppressWarnings("unchecked")
     public RefreshIGParameters parseAndConvert(String[] args) {
         OptionParser parser = build();
         OptionSet options = ArgUtils.parse(args, parser);

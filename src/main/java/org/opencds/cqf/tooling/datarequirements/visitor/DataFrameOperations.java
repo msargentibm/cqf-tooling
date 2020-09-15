@@ -3,7 +3,7 @@ package org.opencds.cqf.tooling.datarequirements.visitor;
 import java.util.List;
 import java.util.Map;
 
-import org.hl7.fhir.r4.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DataRequirement;
 import org.opencds.cqf.tooling.datarequirements.DataRequirementOperations;
 
 public class DataFrameOperations {

@@ -3,7 +3,7 @@ library DataRequirements
 using FHIR version '4.0.0'
 
 include FHIRHelpers version '4.0.0'
-include org.opencds.cqf.tooling.datarequirements.DataRequirementsCommon called Common
+include DataRequirementsCommon called Common
 
 valueset "ESRD Diagnosis": 'http://fakeurl.com/ersd-diagnosis'
 valueset "Hospice Encounter": 'http://fakeurl.com/hospice-encounter'
@@ -94,7 +94,6 @@ define "HospiceEncounterClaimsBUnboundDate":
       where exists CEncounter.item IEncounter
         where date from IEncounter.serviced."start" in day of "Measurement Period"
 
-
   /*
   2b - Bound Measurement Period
   Interval[@2019-01-01, @2020-01-01 )
@@ -103,10 +102,10 @@ define "HospiceEncounterClaimsBUnboundDate":
   dateFilter: { path:  item.serviced.start, valuePeriod: "@2019-01-01-@2020-01-01" },
   */
 
-define "HospiceEncounterClaimsBBoundDate":
+/* define "HospiceEncounterClaimsBBoundDate":
     [Claim] CEncounter
       where exists CEncounter.item IEncounter
-        where IEncounter.serviced."start" in "Measurement Period"
+        where IEncounter.serviced."start" in "Measurement Period" */
 
 /*
 2c - Bound Measurement Period
@@ -116,10 +115,10 @@ type: Claim
 dateFilter: { path:  item.serviced.start, valuePeriod: "@2019-01-01T00:00:00.0-@2020-01-01T00:00:00.0" },
 */
 
-define "HospiceEncounterClaimsBBoundDateFrom":
+/* define "HospiceEncounterClaimsBBoundDateFrom":
     [Claim] CEncounter
       where exists CEncounter.item IEncounter
-        where date from IEncounter.serviced."start" in "Measurement Period"
+        where date from IEncounter.serviced."start" in "Measurement Period" */
 
 
 /*
@@ -129,10 +128,10 @@ DataRequirement
 type: Claim
 */
 
-define "HospiceEncounterClaimsBBoundDateFromPlus1Day":
+/* define "HospiceEncounterClaimsBBoundDateFromPlus1Day":
     [Claim] CEncounter
       where exists CEncounter.item IEncounter
-        where (date from IEncounter.serviced."start") + 1 day in "Measurement Period"
+        where (date from IEncounter.serviced."start") + 1 day in "Measurement Period" */
 
 
 
@@ -145,11 +144,11 @@ codeFilter: { path:  item.revenue, valueSet: 'http://fakeurl.com/hospice-encount
 dateFilter: { path: item.serviced.start, valuePeriod: "@2019-01-01T00:00:00.0-@2020-01-01T00:00:00.0"  }
 */
 
-define "HospiceEncounterClaims":
+/* define "HospiceEncounterClaims":
   [Claim] CEncounter
     where exists CEncounter.item IEncounter
       where IEncounter.revenue in "Hospice Encounter"
-        and date from IEncounter.serviced."start" in day of "Measurement Period"
+        and date from IEncounter.serviced."start" in day of "Measurement Period" */
 
 /*
 3.
@@ -159,13 +158,13 @@ codeFilter: { path:  code, valueSet: 'http://fakeurl.com/hospice-encounter' }
 dateFilter: { path: onset }
 */
 
-define "HospiceEncounterConditions":
+/* define "HospiceEncounterConditions":
   [Condition: "Hospice Encounter"] HospiceEncounterACond
     where IsActiveAndConfirmed(HospiceEncounterACond)
       and date from HospiceEncounterACond.onset in day of "Measurement Period"
 
 define function "IsActiveAndConfirmed"(c FHIR.Condition):
-  true
+  true */
 
 /*
 4.
@@ -174,11 +173,11 @@ type: Claim
 codeFilter: { path:  item.location, valueSet: 'com:testmi:valueset:xyz-33475' }
 */
 
-define "LeadScreeningClaims":
+/* define "LeadScreeningClaims":
   [Claim] C
     where exists ( C.item I
         where I.location in "HEDIS2020_Independent_Laboratory"
-    )
+    ) */
 
 
 
@@ -190,7 +189,7 @@ codeFilter: { path : item.careTeam }
 dateFilter: { path : item.serviced.start }
 */
 
-define "Has Nephrologist Claim Support":
+/* define "Has Nephrologist Claim Support":
   [Claim] C
     where IsNephrologistVisit(C)
     return NephrologistVisitSupport(C)
@@ -212,15 +211,15 @@ define function "ClaimAndItemsForClaim"(C Claim):
     return {
       c: C,
       ci: i
-    }
+    } */
 
 // Hmm.. this would probably be some filter on the practitioner .
 
-define function "HasValidNephrologistProvider"(c Claim, ct List<FHIR.Claim.CareTeam>):
+/* define function "HasValidNephrologistProvider"(c Claim, ct List<FHIR.Claim.CareTeam>):
   true
 
 define function "NephrologistVisitSupport"(C Claim):
-  true
+  true */
 
 /*
 6. - Actually, a simpler version of the last one..
@@ -230,9 +229,9 @@ codeFilter: { path : item.careTeam }
 dateFilter: { path : item.serviced.start }
 */
 
-define "Has Nephrologist Claim":
+/* define "Has Nephrologist Claim":
   exists [Claim] C
-    where IsNephrologistVisit(C)
+    where IsNephrologistVisit(C) */
 
 /*
 7. Could potentially add a value to the date filter if "i" were constant
@@ -246,7 +245,7 @@ type: Claim
 codeFilter: { path: id}
 */
 
-define function EDFractureProcedureVisitsDuring(i Interval<DateTime>):
+/* define function EDFractureProcedureVisitsDuring(i Interval<DateTime>):
   [Procedure: ED] Proc
     let ci: ClaimItem(Proc)
     with "All Fracture Dates" Dt
@@ -272,7 +271,7 @@ define function "ClaimItem"(P Procedure):
   null
 
 define "All Fracture Dates":
-  { @2012-01-01 }
+  { @2012-01-01 } */
 
 
 /* None of these are query context */
@@ -283,14 +282,14 @@ Patient
 dateFilter : { path : birthDate }
 */
 
-define "Patient Age":
+/* define "Patient Age":
   AgeInYearsAt(
     end of "Measurement Period"
-  )
+  ) */
 
-define "In Age Range":
+/* define "In Age Range":
   "Patient Age" >= 67
-    and "Patient Age" <= 85
+    and "Patient Age" <= 85 */
 
 /*
 8b.
@@ -299,5 +298,5 @@ Patient
 codeFilter : { path : gender,  code: 'female'}
 */
 
-define "Is Female":
-  Patient.gender = 'female'
+/* define "Is Female":
+  Patient.gender = 'female' */

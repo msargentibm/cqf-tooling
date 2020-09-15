@@ -14,16 +14,16 @@ import org.cqframework.cql.cql2elm.LibraryManager;
 import org.cqframework.cql.cql2elm.model.TranslatedLibrary;
 import org.cqframework.cql.elm.visiting.BaseVisitor;
 import org.hl7.elm.r1.*;
-import org.hl7.fhir.r4.model.CodeType;
-import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent;
-import org.hl7.fhir.r4.model.DataRequirement.DataRequirementDateFilterComponent;
+import org.hl7.fhir.dstu3.model.CodeType;
+import org.hl7.fhir.dstu3.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent;
+import org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementDateFilterComponent;
 import org.opencds.cqf.tooling.datarequirements.DataRequirementOperations;
 import org.opencds.cqf.tooling.datarequirements.DataRequirementsExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.dstu3.model.DateTimeType;
+import org.hl7.fhir.dstu3.model.StringType;
 
 import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 
@@ -274,7 +274,7 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         ValueSetDef def = this.dataRequirementsExtractor.resolveValueSetRef(ref, library, libraryManager);
 
         DataRequirement dr = new DataRequirement();
-        dr.addCodeFilter().setValueSet(def.getId());
+        dr.addCodeFilter().setValueSet(new StringType(def.getId()));
 
         this.context.push(DataFrame.of(dr));
 
@@ -291,12 +291,12 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
         String resultType = literal.getResultType().toString();
         if(isTemporalType(resultType)) {
-            org.hl7.fhir.r4.model.Type value = parseTemporalType(resultType, literal.getValue());
+            org.hl7.fhir.dstu3.model.Type value = parseTemporalType(resultType, literal.getValue());
             dataReq.addDateFilter().setValue(value)
             .addExtension("type", new StringType(resultType));
         }
         else {
-            dataReq.addCodeFilter().addCode().setCode(literal.getValue())
+            dataReq.addCodeFilter().addValueCoding().setCode(literal.getValue())
             .addExtension("type", new StringType(resultType));
         }
 
@@ -493,8 +493,7 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
             Object parameter = this.parameters.get(parameterDef.getName());
             DataRequirement dataReq = new DataRequirement();
             String localName = parameterDef.getResultType().toString();
-            dataReq.addCodeFilter().addCode()
-            .setCode(parameter.toString()).addExtension("type", new StringType(localName));
+            dataReq.addCodeFilter().addValueCoding().setCode(parameter.toString()).addExtension("type", new StringType(localName));
     
             this.context.push(DataFrame.of(dataReq));
     
@@ -542,8 +541,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
 
         DataRequirement dataReq = new DataRequirement();
-        dataReq.addCodeFilter().addCode().setCode(dateTime.asStringValue());
-        dataReq.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("datetime"));
+        dataReq.addCodeFilter().addValueCoding().setCode(dateTime.asStringValue());
+        dataReq.getCodeFilterFirstRep().getValueCode().get(0).addExtension("type", new StringType("datetime"));
         
         this.context.push(DataFrame.of(dataReq));
         
@@ -619,8 +618,8 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
         DateTimeType dateTime = new DateTimeType(calendar.getTime(), precision);
         
         DataRequirement dataReq = new DataRequirement();
-        dataReq.addCodeFilter().addCode().setCode(dateTime.asStringValue());
-        dataReq.getCodeFilterFirstRep().getCodeFirstRep().addExtension("type", new StringType("datetime"));
+        dataReq.addCodeFilter().addValueCoding().setCode(dateTime.asStringValue());
+        dataReq.getCodeFilterFirstRep().getValueCode().get(0).addExtension("type", new StringType("datetime"));
 
         this.context.push(DataFrame.of(dataReq));
         return null;
@@ -1173,7 +1172,13 @@ public class DataRequirementsVisitor extends BaseVisitor<List<DataRequirement>, 
 
     @Override
     public List<DataRequirement> visit(Library aBean) throws Exception {
-        return this.defaultElementVisit(aBean);
+        // All expressions should have been traversed
+        List<DataRequirement> allReqs = new ArrayList<>();
+        for (DataFrame frame : this.expressionDataRequirementsCache.values()) {
+            allReqs.addAll(frame.flatten());
+        }
+
+        return allReqs;
     }
 
     @Override

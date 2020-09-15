@@ -20,24 +20,25 @@ import org.hl7.elm.r1.Retrieve;
 import org.hl7.elm.r1.ValueSetDef;
 import org.hl7.elm.r1.ValueSetRef;
 import org.hl7.elm.r1.VersionedIdentifier;
+import org.hl7.fhir.dstu3.model.StringType;
 
 public class DataRequirementsExtractor {
 
-    public org.hl7.fhir.r4.model.DataRequirement toDataRequirement(Retrieve retrieve, TranslatedLibrary library,
+    public org.hl7.fhir.dstu3.model.DataRequirement toDataRequirement(Retrieve retrieve, TranslatedLibrary library,
             LibraryManager libraryManager) {
-        org.hl7.fhir.r4.model.DataRequirement dr = new org.hl7.fhir.r4.model.DataRequirement();
+        org.hl7.fhir.dstu3.model.DataRequirement dr = new org.hl7.fhir.dstu3.model.DataRequirement();
 
-        dr.setType(org.hl7.fhir.r4.model.Enumerations.FHIRAllTypes.fromCode(retrieve.getDataType().getLocalPart())
+        dr.setType(org.hl7.fhir.dstu3.model.Enumerations.FHIRAllTypes.fromCode(retrieve.getDataType().getLocalPart())
                 .toCode());
 
         // Set profile if specified
         if (retrieve.getTemplateId() != null) {
-            dr.setProfile(Collections.singletonList(new org.hl7.fhir.r4.model.CanonicalType(retrieve.getTemplateId())));
+            dr.setProfile(Collections.singletonList(new org.hl7.fhir.dstu3.model.UriType(retrieve.getTemplateId())));
         }
 
         // Set code path if specified
         if (retrieve.getCodeProperty() != null) {
-            org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent cfc = new org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent();
+            org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent cfc = new org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent();
 
             cfc.setPath(retrieve.getCodeProperty());
 
@@ -45,7 +46,7 @@ public class DataRequirementsExtractor {
 
             if (retrieve.getCodes() instanceof ValueSetRef) {
                 ValueSetRef vsr = (ValueSetRef) retrieve.getCodes();
-                cfc.setValueSet(toReference(resolveValueSetRef(vsr, library, libraryManager)));
+                cfc.setValueSet(new StringType(toReference(resolveValueSetRef(vsr, library, libraryManager))));
             }
 
             if (retrieve.getCodes() instanceof org.hl7.elm.r1.ToList) {
@@ -68,39 +69,40 @@ public class DataRequirementsExtractor {
         return dr;
     }
 
-    private void resolveCodeFilterCodes(org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent cfc,
+    private void resolveCodeFilterCodes(org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent cfc,
             Expression e, TranslatedLibrary library, LibraryManager libraryManager) {
         if (e instanceof org.hl7.elm.r1.CodeRef) {
             CodeRef cr = (CodeRef) e;
-            cfc.addCode(toCoding(toCode(resolveCodeRef(cr, library, libraryManager)), library, libraryManager));
+            org.hl7.fhir.dstu3.model.Coding coding = toCoding(toCode(resolveCodeRef(cr, library, libraryManager)), library, libraryManager);
+            cfc.addValueCoding(coding);
         }
 
         if (e instanceof org.hl7.elm.r1.Code) {
-            cfc.addCode(toCoding((org.hl7.elm.r1.Code) e, library, libraryManager));
+            cfc.addValueCoding(toCoding((org.hl7.elm.r1.Code) e, library, libraryManager));
         }
 
         if (e instanceof org.hl7.elm.r1.ConceptRef) {
             ConceptRef cr = (ConceptRef) e;
-            org.hl7.fhir.r4.model.CodeableConcept c = toCodeableConcept(
+            org.hl7.fhir.dstu3.model.CodeableConcept c = toCodeableConcept(
                     toConcept(resolveConceptRef(cr, library, libraryManager), library, libraryManager), library,
                     libraryManager);
-            for (org.hl7.fhir.r4.model.Coding code : c.getCoding()) {
-                cfc.addCode(code);
+            for (org.hl7.fhir.dstu3.model.Coding code : c.getCoding()) {
+                cfc.addValueCoding(code);
             }
         }
 
         if (e instanceof org.hl7.elm.r1.Concept) {
-            org.hl7.fhir.r4.model.CodeableConcept c = toCodeableConcept((org.hl7.elm.r1.Concept) e, library,
+            org.hl7.fhir.dstu3.model.CodeableConcept c = toCodeableConcept((org.hl7.elm.r1.Concept) e, library,
                     libraryManager);
-            for (org.hl7.fhir.r4.model.Coding code : c.getCoding()) {
-                cfc.addCode(code);
+            for (org.hl7.fhir.dstu3.model.Coding code : c.getCoding()) {
+                cfc.addValueCoding(code);
             }
         }
     }
 
-    private org.hl7.fhir.r4.model.Coding toCoding(Code code, TranslatedLibrary library, LibraryManager libraryManager) {
+    private org.hl7.fhir.dstu3.model.Coding toCoding(Code code, TranslatedLibrary library, LibraryManager libraryManager) {
         CodeSystemDef codeSystemDef = resolveCodeSystemRef(code.getSystem(), library, libraryManager);
-        org.hl7.fhir.r4.model.Coding coding = new org.hl7.fhir.r4.model.Coding();
+        org.hl7.fhir.dstu3.model.Coding coding = new org.hl7.fhir.dstu3.model.Coding();
         coding.setCode(code.getCode());
         coding.setDisplay(code.getDisplay());
         coding.setSystem(codeSystemDef.getId());
@@ -108,9 +110,9 @@ public class DataRequirementsExtractor {
         return coding;
     }
 
-    private org.hl7.fhir.r4.model.CodeableConcept toCodeableConcept(Concept concept, TranslatedLibrary library,
+    private org.hl7.fhir.dstu3.model.CodeableConcept toCodeableConcept(Concept concept, TranslatedLibrary library,
             LibraryManager libraryManager) {
-        org.hl7.fhir.r4.model.CodeableConcept codeableConcept = new org.hl7.fhir.r4.model.CodeableConcept();
+        org.hl7.fhir.dstu3.model.CodeableConcept codeableConcept = new org.hl7.fhir.dstu3.model.CodeableConcept();
         codeableConcept.setText(concept.getDisplay());
         for (Code code : concept.getCode()) {
             codeableConcept.addCoding(toCoding(code, library, libraryManager));

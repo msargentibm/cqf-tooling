@@ -9,17 +9,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 
+import org.apache.poi.sl.draw.DrawFactory;
 import org.hl7.elm.r1.TypeSpecifier;
-import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent;
-import org.hl7.fhir.r4.model.DataRequirement.DataRequirementDateFilterComponent;
+import org.hl7.fhir.dstu3.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementCodeFilterComponent;
+import org.hl7.fhir.dstu3.model.DataRequirement.DataRequirementDateFilterComponent;
 import org.opencds.cqf.tooling.types.TypeParser;
 
 public class DataRequirementOperations {
 
     public static List<DataRequirement> applyWhere(List<DataRequirement> sources, List<DataRequirement> wheres) {
         for (DataRequirement source : sources) {
-            String aliasName = source.getExtensionByUrl("alias").getValue().toString();
+            String aliasName = source.getExtensionsByUrl("alias").get(0).getValue().toString();
 
             if (source.hasCodeFilter() && source.hasDateFilter()) {
                 throw new IllegalArgumentException("sources can't alias more than one property");
@@ -47,8 +48,8 @@ public class DataRequirementOperations {
                             String combinedPath = (pathPrepend != null ? pathPrepend + "." : "")
                                     + (filter.getPath() != null ? filter.getPath() : "");
                             source.addCodeFilter().setPath(combinedPath);
-                            if (filter.hasCode()) {
-                                source.getCodeFilterFirstRep().addCode().setCode(filter.getCodeFirstRep().getCode());
+                            if (filter.hasValueCoding()) {
+                                source.getCodeFilterFirstRep().addValueCoding().setCode(filter.getValueCodingFirstRep().getCode());
 
                             }
                             if (filter.hasValueSet()) {
@@ -77,7 +78,7 @@ public class DataRequirementOperations {
         }
 
         for (DataRequirement source : sources) {
-            source.removeExtension("alias");
+            source.getExtension().removeIf(x -> x.getUrl().equals("alias"));
         }
 
         return sources;
@@ -91,13 +92,16 @@ public class DataRequirementOperations {
     public static DataRequirement clearCodeValues(DataRequirement dataRequirement) {
         Objects.requireNonNull(dataRequirement, "dataRequirement can not be null");
         if (dataRequirement.hasDateFilter()) {
-            throw new IllegalArgumentException("dataRequirement has already had date filters converted");
+            for (DataRequirementDateFilterComponent drdfc : dataRequirement.getDateFilter()) {
+                drdfc.setValue(null);
+            }
         }
 
         DataRequirement newReq = dataRequirement.copy();
         if (newReq.hasCodeFilter()) {
             for (DataRequirementCodeFilterComponent drcfc : newReq.getCodeFilter()){
-                drcfc.setCode(null);
+                drcfc.setValueCoding(null);
+                drcfc.setValueCode(null);
                 drcfc.setValueSet(null);
             }
         }
@@ -122,18 +126,18 @@ public class DataRequirementOperations {
             for (int i = 0; i < newReq.getCodeFilter().size(); i++) {
                 DataRequirementCodeFilterComponent codeFilterComponent = newReq.getCodeFilter().get(i);
                 // Date
-                if (codeFilterComponent.hasCode() && codeFilterComponent.hasValueSet()) {
+                if (codeFilterComponent.hasValueCoding() && codeFilterComponent.hasValueSet()) {
                     continue;
                 }
 
                 String pathType = null;
                 String codeType = null;
 
-                if (codeFilterComponent.hasCode() && !codeFilterComponent.getCodeFirstRep().hasExtension("type")) {
+                if (codeFilterComponent.hasValueCoding() && !codeFilterComponent.getValueCodingFirstRep().hasExtension("type")) {
                     throw new IllegalArgumentException("code filter code existed but was missing type extension");
                 }
-                else if (codeFilterComponent.hasCode()) {
-                    codeType = codeFilterComponent.getCodeFirstRep().getExtensionString("type");
+                else if (codeFilterComponent.hasValueCoding()) {
+                    codeType = codeFilterComponent.getValueCodingFirstRep().getExtensionString("type");
                 }
 
                 if (codeFilterComponent.hasPath() && !codeFilterComponent.hasExtension("type")) {
@@ -143,25 +147,25 @@ public class DataRequirementOperations {
                     pathType = codeFilterComponent.getExtensionString("type");
                 }
 
-                if (codeFilterComponent.hasCode() && codeFilterComponent.hasPath() && (isTermporalType(codeType) ^ isTermporalType(pathType))) {
+                if (codeFilterComponent.hasValueCoding() && codeFilterComponent.hasPath() && (isTermporalType(codeType) ^ isTermporalType(pathType))) {
                     throw new IllegalArgumentException("code filter path and code types are not compatible");
                 }
 
-                if ((codeFilterComponent.hasCode() && isTermporalType(codeType)) || (codeFilterComponent.hasPath()&& isTermporalType(pathType))) {
+                if ((codeFilterComponent.hasValueCoding() && isTermporalType(codeType)) || (codeFilterComponent.hasPath()&& isTermporalType(pathType))) {
                     newReq.getCodeFilter().remove(codeFilterComponent);
 
                     DataRequirementDateFilterComponent dateFilterComponent = newReq.addDateFilter();;
                     
                     if (codeFilterComponent.hasPath()) {
                         dateFilterComponent.setPath(codeFilterComponent.getPath());
-                        dateFilterComponent.addExtension("type", codeFilterComponent.getExtensionByUrl("type").getValue());
+                        dateFilterComponent.addExtension("type", codeFilterComponent.getExtensionsByUrl("type").get(0).getValue());
                     }
 
-                    if (codeFilterComponent.hasCode()) {
+                    if (codeFilterComponent.hasValueCoding()) {
                         // Period, Duration, DateTime are possible options.
                         dateFilterComponent.setValue(TypeParser.parseFhirType(
-                            codeFilterComponent.getCodeFirstRep().getExtensionString("type"), 
-                            codeFilterComponent.getCodeFirstRep().getCode()));
+                            codeFilterComponent.getValueCodingFirstRep().getExtensionString("type"), 
+                            codeFilterComponent.getValueCodingFirstRep().getCode()));
                     }
                 }
             }
@@ -225,15 +229,15 @@ public class DataRequirementOperations {
                 DataRequirementCodeFilterComponent two = left.getCodeFilter().get(1);
 
                 if (one.getPath() != null && two.getPath() == null) {
-                    if (!one.hasCode()) {
-                        one.addCode().setCode(two.getCodeFirstRep().getCode());
+                    if (!one.hasValueCoding()) {
+                        one.addValueCoding().setCode(two.getValueCodingFirstRep().getCode());
                         left.getCodeFilter().remove(1);
                     }
                 }
 
                 if (two.getPath() != null && one.getPath() == null) {
-                    if (!two.hasCode()) {
-                        two.addCode().setCode(one.getCodeFirstRep().getCode());
+                    if (!two.hasValueCoding()) {
+                        two.addValueCoding().setCode(one.getValueCodingFirstRep().getCode());
                         left.getCodeFilter().remove(0);
                     }
                 }

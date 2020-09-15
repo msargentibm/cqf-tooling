@@ -17,15 +17,11 @@ import org.cqframework.cql.cql2elm.ModelManager;
 import org.cqframework.cql.cql2elm.model.TranslatedLibrary;
 import org.cqframework.cql.elm.visiting.DepthFirstTraverserImpl;
 import org.hl7.elm.r1.ExpressionDef;
-import org.hl7.fhir.r4.model.CodeType;
-import org.hl7.fhir.r4.model.DataRequirement;
-import org.hl7.fhir.r4.model.Parameters;
+import org.hl7.fhir.dstu3.model.CodeType;
+import org.hl7.fhir.dstu3.model.DataRequirement;
+import org.hl7.fhir.dstu3.model.StringType;
 import org.junit.Test;
 import org.opencds.cqf.tooling.TestLibrarySourceProvider;
-
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.parser.JsonParser;
 
 public class DataRequirementsVisitorTest {
     private static final ModelManager modelManager = new ModelManager();
@@ -88,7 +84,7 @@ public class DataRequirementsVisitorTest {
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
-            .setValueSet("http://fakeurl.com/ersd-diagnosis");
+            .setValueSet(new StringType("http://fakeurl.com/ersd-diagnosis"));
 
         List<DataRequirement> actual = observations.getExpression().accept(visitor);
         assertNotNull(actual);
@@ -112,7 +108,7 @@ public class DataRequirementsVisitorTest {
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
-            .setValueSet("http://fakeurl.com/ersd-diagnosis");
+            .setValueSet(new StringType("http://fakeurl.com/ersd-diagnosis"));
 
         assertTrue(actual.get(0).equalsDeep(expected));
     }
@@ -131,7 +127,7 @@ public class DataRequirementsVisitorTest {
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("code")
-            .setValueSet("http://fakeurl.com/ersd-diagnosis");
+            .setValueSet(new StringType("http://fakeurl.com/ersd-diagnosis"));
 
         assertTrue(actual.get(0).equalsDeep(expected));
     }
@@ -149,7 +145,7 @@ public class DataRequirementsVisitorTest {
         DataRequirement expected = new DataRequirement(new CodeType("Observation"));
         expected.addCodeFilter()
             .setPath("status")
-            .addCode().setCode("final");
+            .addValueCoding().setCode("final");
 
         assertTrue(actual.get(0).equalsDeep(expected));
     }
@@ -167,7 +163,7 @@ public class DataRequirementsVisitorTest {
         DataRequirement expected = new DataRequirement(new CodeType("Claim"));
         expected.addCodeFilter()
             .setPath("item.revenue")
-            .setValueSet("http://fakeurl.com/hospice-encounter");
+            .setValueSet(new StringType("http://fakeurl.com/hospice-encounter"));
 
         assertTrue(actual.get(0).equalsDeep(expected));
     }

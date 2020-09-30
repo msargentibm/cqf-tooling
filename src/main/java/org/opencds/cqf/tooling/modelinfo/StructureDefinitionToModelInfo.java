@@ -16,6 +16,8 @@ import org.hl7.elm_modelinfo.r1.ConversionInfo;
 import org.hl7.elm_modelinfo.r1.ModelInfo;
 import org.hl7.elm_modelinfo.r1.TypeInfo;
 import org.opencds.cqf.tooling.Operation;
+import org.opencds.cqf.tooling.modelinfo.cdm.CDMClassInfoBuilder;
+import org.opencds.cqf.tooling.modelinfo.cdm.CDMModelInfoBuilder;
 import org.opencds.cqf.tooling.modelinfo.fhir.FHIRClassInfoBuilder;
 import org.opencds.cqf.tooling.modelinfo.fhir.FHIRModelInfoBuilder;
 import org.opencds.cqf.tooling.modelinfo.qicore.QICoreClassInfoBuilder;
@@ -135,7 +137,16 @@ public class StructureDefinitionToModelInfo extends Operation {
 
             miBuilder = new QuickModelInfoBuilder(modelVersion, typeInfos.values());
             mi = miBuilder.build();
+        } else if (modelName.equalsIgnoreCase("CDM")) {
+            ClassInfoBuilder ciBuilder = new CDMClassInfoBuilder(atlas.getStructureDefinitions());
+            Map<String, TypeInfo> typeInfos = ciBuilder.build();
+            ciBuilder.afterBuild();
+
+            String helpersPath = this.getOutputPath() + "/" + modelName + "Helpers-" + modelVersion + ".cql";
+            miBuilder = new CDMModelInfoBuilder(modelVersion, typeInfos, atlas, helpersPath);
+            mi = miBuilder.build();
         }
+        
         else {
             //should blowup
             ClassInfoBuilder ciBuilder = new FHIRClassInfoBuilder(atlas.getStructureDefinitions());
